@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import "./Navbar.css";
 
 import ca1b_logo from "../../assets/logos/ca1b.png";
 import defaultProfile from "../../assets/logos/ca1b.png";
 
 export default function Navbar() {
+  const { user } = useAuth();
+
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
@@ -79,7 +82,11 @@ export default function Navbar() {
               onClick={() => setProfileOpen(!profileOpen)}
             >
               <img
-                src={defaultProfile}
+                src={
+                  user?.photoURL
+                    ? user.photoURL
+                    : defaultProfile
+                }
                 alt="Profile"
               />
             </button>

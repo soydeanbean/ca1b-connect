@@ -1,5 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ScheduleModal from "../../components/common/ScheduleModal";
+import { useAuth } from "../../context/AuthContext";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../../lib/firebase";
 import "./Dashboard.css";
 
 type ScheduleStatus = "done" | "ongoing" | "upcoming";
@@ -11,49 +14,58 @@ type ScheduleItem = {
   status: ScheduleStatus;
 };
 
+type Stats = {
+  students: number;
+  attendance: number;
+  assignments: number;
+  announcements: number;
+};
+
 export default function Dashboard() {
-  const [stats] = useState({
-    students: 37,
-    attendance: 100,
+  const { user } = useAuth();
+
+  const [stats, setStats] = useState<Stats>({
+    students: 0,
+    attendance: 0,
     assignments: 0,
-    announcements: 3,
+    announcements: 0,
   });
 
-  const [schedule] = useState<ScheduleItem[]>([
-    {
-      time: "08:00 - 09:30 AM",
-      subject: "Homeroom Guidance Program I",
-      room: "HB322",
-      status: "done",
-    },
-    {
-      time: "10:00 - 11:00 AM",
-      subject: "Life and Career Skills",
-      room: "HB311",
-      status: "ongoing",
-    },
-    {
-      time: "11:00 - 12:00 AM/Noon",
-      subject: "Pag-aaral ng Kasaysayan at Lipunang Pilipino",
-      room: "HB311",
-      status: "upcoming",
-    },
-    {
-      time: "01:00 - 03:00 PM",
-      subject: "Computer Systems Servicing",
-      room: "CSLAB4",
-      status: "upcoming",
-    },
-    {
-      time: "04:00 - 05:00 PM",
-      subject: "General Mathematics",
-      room: "HB311",
-      status: "upcoming",
-    },
-  ]);
+  const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
 
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduleItem | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+
+  const [loading, setLoading] = useState(true);
+
+  // 🔥 FETCH FIRESTORE DATA
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      if (!user) return;
+
+      const ref = doc(db, "users", user.uid);
+      const snap = await getDoc(ref);
+
+      if (snap.exists()) {
+        const data = snap.data();
+
+        setStats(
+          data.stats ?? {
+            students: 0,
+            attendance: 0,
+            assignments: 0,
+            announcements: 0,
+          }
+        );
+
+        setSchedule(data.schedule ?? []);
+      }
+
+      setLoading(false);
+    };
+
+    fetchDashboard();
+  }, [user]);
 
   const getStatusClass = (status: ScheduleStatus) => {
     if (status === "done") return "done";
@@ -71,6 +83,15 @@ export default function Dashboard() {
     setModalOpen(false);
   };
 
+  // ⏳ LOADING STATE
+  if (loading) {
+    return (
+      <div className="dashboard">
+        <p>Loading dashboard...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="dashboard">
 
@@ -79,6 +100,7 @@ export default function Dashboard() {
         <p>Welcome back, manage your class efficiently.</p>
       </section>
 
+      {/* STATS */}
       <section className="stats-grid">
 
         <div className="stat-card">
@@ -103,6 +125,7 @@ export default function Dashboard() {
 
       </section>
 
+      {/* SCHEDULE + ANNOUNCEMENTS */}
       <section className="dashboard-grid">
 
         <div className="card schedule-card">
@@ -116,17 +139,21 @@ export default function Dashboard() {
               <span>Room</span>
             </div>
 
-            {schedule.map((item, index) => (
-              <div
-                key={index}
-                className={`schedule-row ${getStatusClass(item.status)}`}
-                onClick={() => openModal(item)}
-              >
-                <span>{item.time}</span>
-                <span>{item.subject}</span>
-                <span>{item.room}</span>
-              </div>
-            ))}
+            {schedule.length === 0 ? (
+              <p>No schedule available</p>
+            ) : (
+              schedule.map((item, index) => (
+                <div
+                  key={index}
+                  className={`schedule-row ${getStatusClass(item.status)}`}
+                  onClick={() => openModal(item)}
+                >
+                  <span>{item.time}</span>
+                  <span>{item.subject}</span>
+                  <span>{item.room}</span>
+                </div>
+              ))
+            )}
 
           </div>
         </div>
@@ -148,15 +175,16 @@ export default function Dashboard() {
 
       </section>
 
+      {/* QUICK ACTIONS */}
       <section className="bottom-grid">
 
         <div className="card quick-actions">
           <h2>Quick Actions</h2>
 
-          <button> Add Student</button>
-          <button> Take Attendance</button>
-          <button> Create Assignment</button>
-          <button> New Announcement</button>
+          <button>Add Student</button>
+          <button>Take Attendance</button>
+          <button>Create Assignment</button>
+          <button>New Announcement</button>
         </div>
 
         <div className="card events-card">
@@ -171,6 +199,7 @@ export default function Dashboard() {
 
       </section>
 
+      {/* MODAL */}
       <ScheduleModal
         open={modalOpen}
         item={selectedSchedule}
