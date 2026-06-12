@@ -1,5 +1,11 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+
 import Navbar from "./components/common/Navbar";
+
+import Dashboard from "./pages/dashboard/Dashboard";
+import Attendance from "./pages/attendance/Attendance";
+import Students from "./pages/students/Students";
+import CalendarPage from "./pages/calendar/CalendarPage";
 
 function App() {
   return (
@@ -9,11 +15,10 @@ function App() {
 
         <main className="app-content">
           <Routes>
-            {/* TEMP PAGES (replace later with real ones) */}
-            <Route path="/" element={<h1>Dashboard</h1>} />
-            <Route path="/attendance" element={<h1>Attendance</h1>} />
-            <Route path="/students" element={<h1>Students</h1>} />
-            <Route path="/calendar" element={<h1>Calendar</h1>} />
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/attendance" element={<Attendance />} />
+            <Route path="/students" element={<Students />} />
+            <Route path="/calendar" element={<CalendarPage />} />
           </Routes>
         </main>
       </div>

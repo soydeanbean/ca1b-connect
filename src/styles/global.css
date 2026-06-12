@@ -1,6 +1,6 @@
 :root {
-  --primary: #ff8c00;   /* orange */
-  --accent: #ffd000;    /* yellow */
+  --primary: #dd7a00;   /* orange */
+  --accent: #dab200;    /* yellow */
   --white: #ffffff;
 
   --bg-light: #ffffff;
@@ -38,8 +38,41 @@ body {
   flex: 1;
 }
 
-/* DARK MODE (future ready) */
 .dark {
   background: var(--bg-dark);
   color: var(--text-dark);
+}
+
+.dark .navbar {
+  background: linear-gradient(
+    135deg,
+    rgba(20, 20, 25, 0.95),
+    rgba(35, 35, 40, 0.95)
+  );
+}
+
+.dark .nav-links {
+  background: rgba(255,255,255,0.05);
+}
+
+.dark .profile-dropdown {
+  background: #1d1d22;
+}
+
+.dark .profile-dropdown a,
+.dark .profile-dropdown button {
+  color: white;
+}
+
+.dark .profile-dropdown a:hover,
+.dark .profile-dropdown button:hover {
+  background: #2a2a30;
+}
+
+.dark .search-container input {
+  background: rgba(255,255,255,0.08);
+}
+
+.dark .search-container input::placeholder {
+  color: rgba(255,255,255,0.6);
 }
