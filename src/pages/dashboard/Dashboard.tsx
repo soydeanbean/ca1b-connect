@@ -1,211 +1,271 @@
 import { useEffect, useState } from "react";
-import ScheduleModal from "../../components/common/ScheduleModal";
 import { useAuth } from "../../context/AuthContext";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../../lib/firebase";
+import ScheduleModal from "../../components/common/ScheduleModal";
 import "./Dashboard.css";
 
-type ScheduleStatus = "done" | "ongoing" | "upcoming";
+type Officer = {
+  role: string;
+  name: string;
+  description: string;
+  responsibilities: string[];
+};
 
 type ScheduleItem = {
   time: string;
   subject: string;
   room: string;
-  status: ScheduleStatus;
+  status: "done" | "ongoing" | "upcoming";
 };
 
-type Stats = {
-  students: number;
-  attendance: number;
-  assignments: number;
-  announcements: number;
+type CalendarDay = {
+  day: number;
+  type?: "class" | "event" | "holiday" | "online";
+  label?: string;
 };
+
+const officers: Officer[] = [
+    {
+    role: "President",
+    name: "Khyle Reese R. Bernando",
+    description:
+      "Leads the class organization, oversees decisions, and represents the section in school matters.",
+    responsibilities: [
+      "Leads meetings",
+      "Coordinates officers",
+      "Represents class in school activities",
+    ],
+  },
+  {
+    role: "Vice President",
+    name: "Mikhaila Hurleyanne E. Sorita",
+    description:
+      "Assists the president and takes charge when the president is unavailable.",
+    responsibilities: ["Supports president", "Assists in coordination"],
+  },
+  {
+    role: "Secretary",
+    name: "Bea Agatha T. Espiritu",
+    description:
+      "Handles documentation, attendance records, and official class notes.",
+    responsibilities: ["Records meetings", "Manages documents"],
+  },
+  {
+    role: "Treasurer",
+    name: "Elvin Yhiel D. Garfin",
+    description:
+      "Manages class funds, budgeting, and financial tracking.",
+    responsibilities: ["Handles funds", "Tracks expenses"],
+  },
+  {
+    role: "Auditor",
+    name: "Rachel P. Parza",
+    description:
+      "Ensures all financial records are accurate and transparent.",
+    responsibilities: ["Audits finances", "Validates records"],
+  },
+  {
+    role: "P.I.O",
+    name: "Nativity France S. Cedron",
+    description:
+      "Manages announcements and class communication.",
+    responsibilities: ["Posts updates", "Handles communication"],
+  },
+  {
+    role: "Business Managers",
+    name: "Leo John S. Arganda & James Joseph T. Rovera",
+    description:
+      "Handles class projects, fundraising, and external coordination.",
+    responsibilities: ["Manages projects", "Organizes fundraisers"],
+  },
+  {
+    role: "Beadle",
+    name: "Rejiro R. Reobaldez",
+    description:
+      "Maintains classroom order and assists teachers during class.",
+    responsibilities: ["Assists teacher", "Maintains order"],
+  },
+  {
+    role: "Co-beadle",
+    name: "Arkin B. Canonizado",
+    description:
+      "Supports the beadle in maintaining classroom discipline.",
+    responsibilities: ["Supports Beadle", "Helps classroom flow"],
+  },
+];
 
 export default function Dashboard() {
   const { user } = useAuth();
 
-  const [stats, setStats] = useState<Stats>({
-    students: 0,
-    attendance: 0,
-    assignments: 0,
-    announcements: 0,
-  });
-
   const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
-
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduleItem | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
+  const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
+
+  const [selectedOfficer, setSelectedOfficer] = useState<Officer | null>(null);
+
+  // 🔥 used for animation refresh
+  const [animKey, setAnimKey] = useState(0);
+
   const [loading, setLoading] = useState(true);
 
-  // 🔥 FETCH FIRESTORE DATA
   useEffect(() => {
-    const fetchDashboard = async () => {
+    const fetch = async () => {
       if (!user) return;
 
-      const ref = doc(db, "users", user.uid);
-      const snap = await getDoc(ref);
-
-      if (snap.exists()) {
-        const data = snap.data();
-
-        setStats(
-          data.stats ?? {
-            students: 0,
-            attendance: 0,
-            assignments: 0,
-            announcements: 0,
-          }
-        );
-
-        setSchedule(data.schedule ?? []);
-      }
+      const snap = await getDoc(doc(db, "users", user.uid));
+      if (snap.exists()) setSchedule(snap.data().schedule ?? []);
 
       setLoading(false);
     };
 
-    fetchDashboard();
+    fetch();
   }, [user]);
 
-  const getStatusClass = (status: ScheduleStatus) => {
-    if (status === "done") return "done";
-    if (status === "ongoing") return "ongoing";
-    return "upcoming";
+  const selectOfficer = (o: Officer) => {
+    setSelectedOfficer(o);
+    setAnimKey((k) => k + 1); // retrigger animation
   };
 
-  const openModal = (item: ScheduleItem) => {
-    setSelectedSchedule(item);
-    setModalOpen(true);
+  const openDay = (day: number) => {
+    const types: CalendarDay["type"][] = ["class", "event", "holiday", "online"];
+
+    setSelectedDay({
+      day,
+      type: types[day % 4],
+      label:
+        day % 4 === 0
+          ? "Regular Class Day"
+          : day % 4 === 1
+          ? "School Event"
+          : day % 4 === 2
+          ? "Holiday"
+          : "Online Class",
+    });
   };
 
-  const closeModal = () => {
-    setSelectedSchedule(null);
-    setModalOpen(false);
-  };
-
-  // ⏳ LOADING STATE
-  if (loading) {
-    return (
-      <div className="dashboard">
-        <p>Loading dashboard...</p>
-      </div>
-    );
-  }
+  if (loading) return <div className="dashboard">Loading...</div>;
 
   return (
     <div className="dashboard">
 
-      <section className="dashboard-header">
-        <h1>CA1B Dashboard</h1>
-        <p>Welcome back, manage your class efficiently.</p>
+      {/* HERO */}
+      <section className="hero">
+        <div>
+          <h1>CA1B Connect</h1>
+          <p className="motto">Creativity is Society’s Cab</p>
+        </div>
+
+        <div className="hero-right">
+          <p>📅 {new Date().toDateString()}</p>
+        </div>
       </section>
 
-      {/* STATS */}
-      <section className="stats-grid">
+      {/* FLOW */}
+      <div className="flow">
 
-        <div className="stat-card">
-          <h3>{stats.students}</h3>
-          <p>Total Students</p>
-        </div>
+        {/* SCHEDULE */}
+        <section className="panel accent-orange">
+          <h2>Today’s Schedule</h2>
 
-        <div className="stat-card">
-          <h3>{stats.attendance}%</h3>
-          <p>Attendance Rate</p>
-        </div>
-
-        <div className="stat-card">
-          <h3>{stats.assignments}</h3>
-          <p>Pending Assignments</p>
-        </div>
-
-        <div className="stat-card">
-          <h3>{stats.announcements}</h3>
-          <p>Announcements</p>
-        </div>
-
-      </section>
-
-      {/* SCHEDULE + ANNOUNCEMENTS */}
-      <section className="dashboard-grid">
-
-        <div className="card schedule-card">
-          <h2>Today's Schedule</h2>
-
-          <div className="schedule-table">
-
-            <div className="schedule-header">
-              <span>Time</span>
-              <span>Subject</span>
-              <span>Room</span>
+          {schedule.slice(0, 5).map((s, i) => (
+            <div
+              key={i}
+              className={`schedule ${s.status}`}
+              onClick={() => {
+                setSelectedSchedule(s);
+                setModalOpen(true);
+              }}
+            >
+              <span>{s.time}</span>
+              <b>{s.subject}</b>
+              <span>{s.room}</span>
             </div>
+          ))}
+        </section>
 
-            {schedule.length === 0 ? (
-              <p>No schedule available</p>
+        {/* CALENDAR */}
+        <section className="panel calendar-panel">
+          <h2>Calendar</h2>
+
+          <div className="calendar">
+            {Array.from({ length: 30 }).map((_, i) => (
+              <div key={i} className="day" onClick={() => openDay(i + 1)}>
+                {i + 1}
+              </div>
+            ))}
+          </div>
+
+          {selectedDay && (
+            <div className="day-details">
+              <b>Day {selectedDay.day}</b>
+              <p>{selectedDay.label}</p>
+              <span className={`tag ${selectedDay.type}`}>
+                {selectedDay.type}
+              </span>
+            </div>
+          )}
+        </section>
+      </div>
+
+      {/* OFFICERS MASTER DETAIL */}
+      <section className="officers">
+        <h2>Class Officers</h2>
+
+        <div className="officer-layout">
+
+          {/* LEFT */}
+          <div className="officer-list">
+            {officers.map((o, i) => (
+              <div
+                key={i}
+                className={`officer-item ${selectedOfficer?.role === o.role ? "active" : ""}`}
+                onClick={() => selectOfficer(o)}
+              >
+                {o.role}
+              </div>
+            ))}
+          </div>
+
+          {/* RIGHT */}
+          <div key={animKey} className={`officer-detail ${!selectedOfficer ? "empty" : ""}`}>
+
+            {!selectedOfficer ? (
+              <div className="empty-state">
+                Select an officer to view details
+              </div>
             ) : (
-              schedule.map((item, index) => (
-                <div
-                  key={index}
-                  className={`schedule-row ${getStatusClass(item.status)}`}
-                  onClick={() => openModal(item)}
-                >
-                  <span>{item.time}</span>
-                  <span>{item.subject}</span>
-                  <span>{item.room}</span>
-                </div>
-              ))
+              <div className="officer-content">
+
+                <div className="role">{selectedOfficer.role}</div>
+
+                <div className="name">{selectedOfficer.name}</div>
+
+                <div className="desc">{selectedOfficer.description}</div>
+
+                <div className="section-title">Responsibilities</div>
+
+                <ul className="resp">
+                  {selectedOfficer.responsibilities.map((r, i) => (
+                    <li key={i}>{r}</li>
+                  ))}
+                </ul>
+
+              </div>
             )}
 
           </div>
-        </div>
-
-        <div className="card announcements-card">
-          <h2>Announcements</h2>
-
-          <div className="announcement">
-            <h4>Exam Schedule Updated</h4>
-            <p>Midterm exams will start next week.</p>
-          </div>
-
-          <div className="announcement">
-            <h4>Project Submission</h4>
-            <p>All assignments must be submitted Friday.</p>
-          </div>
 
         </div>
-
       </section>
 
-      {/* QUICK ACTIONS */}
-      <section className="bottom-grid">
-
-        <div className="card quick-actions">
-          <h2>Quick Actions</h2>
-
-          <button>Add Student</button>
-          <button>Take Attendance</button>
-          <button>Create Assignment</button>
-          <button>New Announcement</button>
-        </div>
-
-        <div className="card events-card">
-          <h2>Upcoming Events</h2>
-
-          <ul>
-            <li>📅 Quiz - Friday</li>
-            <li>📅 Project Deadline - Next Week</li>
-            <li>📅 School Event - Month End</li>
-          </ul>
-        </div>
-
-      </section>
-
-      {/* MODAL */}
       <ScheduleModal
         open={modalOpen}
         item={selectedSchedule}
-        onClose={closeModal}
+        onClose={() => setModalOpen(false)}
       />
-
     </div>
   );
 }
