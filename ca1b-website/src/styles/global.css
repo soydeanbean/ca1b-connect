@@ -1,0 +1,45 @@
+:root {
+  --primary: #ff8c00;   /* orange */
+  --accent: #ffd000;    /* yellow */
+  --white: #ffffff;
+
+  --bg-light: #ffffff;
+  --bg-dark: #0f0f12;
+
+  --text-light: #1a1a1a;
+  --text-dark: #f5f5f5;
+
+  --radius: 14px;
+  --transition: all 0.25s ease;
+}
+
+/* RESET */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+body {
+  background: var(--bg-light);
+  color: var(--text-light);
+}
+
+/* APP LAYOUT */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-content {
+  padding: 20px;
+  flex: 1;
+}
+
+/* DARK MODE (future ready) */
+.dark {
+  background: var(--bg-dark);
+  color: var(--text-dark);
+}
