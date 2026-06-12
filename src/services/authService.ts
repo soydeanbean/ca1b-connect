@@ -4,11 +4,23 @@ import {
   signInWithEmailAndPassword,
   signOut,
   GoogleAuthProvider,
+  sendEmailVerification,
   signInWithPopup,
 } from "firebase/auth";
 
-export const registerUser = (email: string, password: string) => {
-  return createUserWithEmailAndPassword(auth, email, password);
+export const registerUser = async (email: string, password: string) => {
+  const userCredential = await createUserWithEmailAndPassword(
+    auth,
+    email,
+    password
+  );
+
+  await sendEmailVerification(userCredential.user);
+
+  // 🔥 force logout so they MUST verify first
+  await signOut(auth);
+
+  return userCredential;
 };
 
 export const loginUser = (email: string, password: string) => {
@@ -19,7 +31,7 @@ export const logoutUser = () => {
   return signOut(auth);
 };
 
-export const loginWithGoogle = () => {
+export const loginWithGoogle = async () => {
   const provider = new GoogleAuthProvider();
-  return signInWithPopup(auth, provider);
+  await signInWithPopup(auth, provider);
 };
