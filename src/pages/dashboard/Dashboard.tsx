@@ -13,9 +13,9 @@ type ScheduleItem = {
 
 export default function Dashboard() {
   const [stats] = useState({
-    students: 32,
-    attendance: 92,
-    assignments: 5,
+    students: 37,
+    attendance: 100,
+    assignments: 0,
     announcements: 3,
   });
 
