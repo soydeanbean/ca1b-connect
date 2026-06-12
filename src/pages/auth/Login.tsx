@@ -12,13 +12,8 @@ export default function Login() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
-  // ✅ AUTO REDIRECT (THIS FIXES GOOGLE LOGIN TOO)
   useEffect(() => {
     if (!loading && user) {
-      if (!user.emailVerified) {
-        setError("Please verify your email first.");
-        return;
-      }
       navigate("/");
     }
   }, [user, loading, navigate]);
@@ -27,28 +22,44 @@ export default function Login() {
     try {
       setError("");
 
-      const result = await loginUser(email, password);
+      const credential = await loginUser(email, password);
 
-      if (!result.user.emailVerified) {
+      if (!credential.user.emailVerified) {
         setError("Please verify your email first.");
         return;
       }
 
-      // no navigate here anymore
+      navigate("/");
     } catch (err: any) {
-      if (err.code === "auth/user-not-found") {
-        setError("Email not found");
-      } else if (err.code === "auth/wrong-password") {
-        setError("Wrong password");
-      } else {
-        setError("Login failed");
+      switch (err.code) {
+        case "auth/user-not-found":
+          setError("Email not found");
+          break;
+
+        case "auth/wrong-password":
+          setError("Wrong password");
+          break;
+
+        case "auth/invalid-credential":
+          setError("Invalid email or password");
+          break;
+
+        default:
+          console.error(err);
+          setError("Login failed");
       }
     }
   };
 
   const handleGoogle = async () => {
-    await loginWithGoogle();
-    // redirect handled automatically by AuthContext
+    try {
+      setError("");
+      await loginWithGoogle();
+      navigate("/");
+    } catch (err: any) {
+      console.error("GOOGLE ERROR:", err);
+      setError(err.code || err.message);
+    }
   };
 
   return (
@@ -70,12 +81,14 @@ export default function Login() {
           <input
             type="email"
             placeholder="Email"
+            value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
 
           <input
             type="password"
             placeholder="Password"
+            value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
 
@@ -92,8 +105,10 @@ export default function Login() {
           </button>
 
           <p className="switch">
-            Don’t have an account?{" "}
-            <span onClick={() => navigate("/register")}>Register</span>
+            Don't have an account?{" "}
+            <span onClick={() => navigate("/register")}>
+              Register
+            </span>
           </p>
         </div>
       </div>

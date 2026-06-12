@@ -1,30 +1,20 @@
-import { useAuth } from "../context/AuthContext";
 import { Navigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
-export default function ProtectedRoute({ children }: any) {
+export default function ProtectedRoute({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { user, loading } = useAuth();
 
-  // 🔥 IMPORTANT: prevent premature redirect decisions
   if (loading) {
-    return (
-      <div
-        style={{
-          height: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#0f0f0f",
-          color: "#fff",
-        }}
-      >
-        Loading CA1B Connect...
-      </div>
-    );
+    return <div>Loading...</div>;
   }
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return children;
+  return user ? (
+    <>{children}</>
+  ) : (
+    <Navigate to="/login" replace />
+  );
 }
