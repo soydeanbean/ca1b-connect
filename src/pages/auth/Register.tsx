@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { FirebaseError } from "firebase/app";
 import { registerUser } from "../../services/authService";
 import { useNavigate } from "react-router-dom";
 import "./Auth.css";
@@ -23,10 +24,12 @@ export default function Register() {
       alert("Verification email sent! Check your inbox.");
 
       navigate("/login");
-    } catch (err: any) {
-      if (err.code === "auth/email-already-in-use") {
+    } catch (err: unknown) {
+      const code = err instanceof FirebaseError ? err.code : "";
+
+      if (code === "auth/email-already-in-use") {
         setError("Email already in use");
-      } else if (err.code === "auth/weak-password") {
+      } else if (code === "auth/weak-password") {
         setError("Password too weak");
       } else {
         setError("Registration failed");

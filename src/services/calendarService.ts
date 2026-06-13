@@ -1,4 +1,4 @@
-export async function exportToGoogleCalendar(events: any[]) {
+export async function exportToGoogleCalendar(events: unknown[]) {
   // placeholder structure for real Google Calendar API
   console.log("Syncing to Google Calendar:", events);
 

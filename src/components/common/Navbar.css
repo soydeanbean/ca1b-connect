@@ -62,10 +62,11 @@
 
 /* ================= SEARCH ================= */
 .search-container {
+  position: relative;
   flex: 1;
   display: flex;
   justify-content: center;
-  max-width: 420px;
+  max-width: 460px;
 }
 
 .search-container input {
@@ -90,6 +91,68 @@
 .search-container input:focus {
   background: rgba(255,255,255,0.3);
   box-shadow: 0 0 0 3px rgba(255,255,255,0.15);
+}
+
+.global-search-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  right: 0;
+  z-index: 1002;
+  overflow: hidden;
+  border: 1px solid rgba(255, 140, 0, 0.18);
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.18);
+  animation: slideDown 0.2s ease;
+}
+
+.global-search-dropdown button,
+.global-search-empty {
+  width: 100%;
+  padding: 12px 14px;
+  border-bottom: 1px solid #f0f0f0;
+  background: white;
+  color: #222;
+  text-align: left;
+}
+
+.global-search-dropdown button {
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.global-search-dropdown button:hover {
+  background: rgba(255, 140, 0, 0.1);
+}
+
+.global-search-dropdown span,
+.global-search-dropdown small {
+  display: block;
+  color: #777;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.global-search-dropdown strong {
+  display: block;
+  margin-top: 3px;
+  color: #222;
+  font-size: 14px;
+}
+
+.global-search-dropdown small {
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+  font-weight: 700;
+  text-transform: none;
+}
+
+.global-search-empty {
+  color: #777;
+  font-size: 13px;
+  font-weight: 750;
 }
 
 /* ================= NAV ================= */
@@ -305,16 +368,21 @@ body.dark .logout-modal {
 
 /* ================= MOBILE RESPONSIVE ================= */
 @media (max-width: 900px) {
+  .navbar-container {
+    flex-wrap: wrap;
+  }
 
-  /* hide search */
+
   .search-container {
-    display: none;
+    order: 3;
+    flex-basis: 100%;
+    max-width: none;
   }
 
   /* nav becomes dropdown */
   .nav-links {
     position: absolute;
-    top: 85px;
+    top: 138px;
     right: 15px;
 
     flex-direction: column;

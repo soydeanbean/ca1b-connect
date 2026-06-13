@@ -1,16 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { updateProfile } from "firebase/auth";
 
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 import {
   ensureUserProfile,
   getUserProfile,
   updateMyProfile
 } from "../../services/profileService";
 import { getStudentAttendanceOverview } from "../../services/attendanceService";
+import { getActivities, getActivityStats } from "../../services/activityService";
 
 import type { UserProfile } from "../../types/Profile";
 import type { PersonalAttendanceOverview } from "../../types/Attendance";
+import type { ActivityStats } from "../../types/Activity";
 
 import defaultProfile from "../../assets/logos/ca1b.png";
 import "./Profile.css";
@@ -46,6 +48,7 @@ export default function Profile() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [attendanceOverview, setAttendanceOverview] =
     useState<PersonalAttendanceOverview | null>(null);
+  const [activityStats, setActivityStats] = useState<ActivityStats | null>(null);
 
   const [form, setForm] = useState<ProfileForm>({
     name: "",
@@ -82,7 +85,10 @@ export default function Profile() {
         await ensureUserProfile(user);
 
         const loadedProfile = await getUserProfile(user.uid);
-        const overview = await getStudentAttendanceOverview(user.uid);
+        const [overview, activities] = await Promise.all([
+          getStudentAttendanceOverview(user.uid),
+          getActivities()
+        ]);
 
         if (loadedProfile) {
           setProfile(loadedProfile);
@@ -95,6 +101,7 @@ export default function Profile() {
         }
 
         setAttendanceOverview(overview);
+        setActivityStats(getActivityStats(activities, user.uid));
       } catch (error) {
         console.error("Profile load failed:", error);
         setMessage("Profile could not be fully loaded.");
@@ -204,6 +211,40 @@ export default function Profile() {
         >
           {editMode ? "Cancel" : "Edit Profile"}
         </button>
+      </section>
+
+      <section className="profile-card profile-activity-card">
+        <div className="profile-card-header">
+          <h2>My Activities</h2>
+          <p>Assignments, class activities, and projects checked as finished.</p>
+        </div>
+
+        <div className="profile-activity-summary">
+          <div>
+            <span>Finished</span>
+            <strong>{activityStats?.completed || 0}</strong>
+          </div>
+          <div>
+            <span>Pending</span>
+            <strong>{activityStats?.pending || 0}</strong>
+          </div>
+          <div>
+            <span>Overdue</span>
+            <strong>{activityStats?.overdue || 0}</strong>
+          </div>
+          <div>
+            <span>Assignments</span>
+            <strong>{activityStats?.assignmentsCompleted || 0}</strong>
+          </div>
+          <div>
+            <span>Projects</span>
+            <strong>{activityStats?.projectsCompleted || 0}</strong>
+          </div>
+          <div>
+            <span>Activities</span>
+            <strong>{activityStats?.activitiesCompleted || 0}</strong>
+          </div>
+        </div>
       </section>
 
       {message && <div className="profile-message">{message}</div>}

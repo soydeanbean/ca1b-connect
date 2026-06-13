@@ -6,6 +6,7 @@ import Navbar from "./components/common/Navbar";
 
 import Dashboard from "./pages/dashboard/Dashboard";
 import Attendance from "./pages/attendance/Attendance";
+import Activities from "./pages/activities/Activities";
 import Students from "./pages/students/Students";
 import CalendarPage from "./pages/calendar/CalendarPage";
 import Profile from "./pages/profile/Profile";
@@ -16,7 +17,7 @@ import Register from "./pages/auth/Register";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import PublicRoute from "./routes/PublicRoute";
 
-import { useAuth } from "./context/AuthContext";
+import { useAuth } from "./hooks/useAuth";
 
 function AppRoutes() {
   const { loading } = useAuth();
@@ -70,6 +71,7 @@ function AppRoutes() {
                   <Route path="/" element={<Dashboard />} />
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/attendance" element={<Attendance />} />
+                  <Route path="/activities" element={<Activities />} />
                   <Route path="/students" element={<Students />} />
                   <Route path="/calendar" element={<CalendarPage />} />
                   <Route path="/profile" element={<Profile />} />

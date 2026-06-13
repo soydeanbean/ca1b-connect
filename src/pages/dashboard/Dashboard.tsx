@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
+import { Link } from "react-router-dom";
 
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 import { db } from "../../lib/firebase";
 
 import type { Officer } from "../../data/Officers";
@@ -14,8 +15,10 @@ import { seedUserData } from "../../services/seedUserData";
 import { CLASS_STUDENT_COUNT, seedClassData } from "../../services/seedClassData";
 import { exportToGoogleCalendar } from "../../services/calendarService";
 import { getStudentAttendanceOverview } from "../../services/attendanceService";
+import { getActivities, getActivityStats, splitActivitiesForStudent } from "../../services/activityService";
 
 import type { PersonalAttendanceOverview } from "../../types/Attendance";
+import type { ActivityStats, ClassActivity } from "../../types/Activity";
 
 import "./Dashboard.css";
 
@@ -87,7 +90,8 @@ function parseTimeRange(time: string) {
 
   const parse = (value: string) => {
     const [hourMin, meridian] = value.trim().split(" ");
-    let [hours, minutes] = hourMin.split(":").map(Number);
+    const [parsedHours, minutes] = hourMin.split(":").map(Number);
+    let hours = parsedHours;
 
     if (meridian === "PM" && hours !== 12) hours += 12;
     if (meridian === "AM" && hours === 12) hours = 0;
@@ -152,6 +156,8 @@ export default function Dashboard() {
   const [studentCount, setStudentCount] = useState(CLASS_STUDENT_COUNT);
   const [myAttendance, setMyAttendance] =
     useState<PersonalAttendanceOverview | null>(null);
+  const [activities, setActivities] = useState<ClassActivity[]>([]);
+  const [activityStats, setActivityStats] = useState<ActivityStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduleItem | null>(
@@ -173,6 +179,10 @@ export default function Dashboard() {
   const phDate = getManilaDateText(today);
 
   const currentMonth = MONTHS[monthIndex];
+  const upcomingActivities = useMemo(
+    () => splitActivitiesForStudent(activities, user?.uid || "").active.slice(0, 4),
+    [activities, user]
+  );
 
   const todaysSchedule = useMemo(
     () => schedule.filter((item) => item.day === weekday),
@@ -207,8 +217,13 @@ export default function Dashboard() {
           setStudentCount(CLASS_STUDENT_COUNT);
         }
 
-        const overview = await getStudentAttendanceOverview(user.uid);
+        const [overview, loadedActivities] = await Promise.all([
+          getStudentAttendanceOverview(user.uid),
+          getActivities()
+        ]);
         setMyAttendance(overview);
+        setActivities(loadedActivities);
+        setActivityStats(getActivityStats(loadedActivities, user.uid));
       } catch (error) {
         console.error("Dashboard load failed:", error);
       } finally {
@@ -366,6 +381,47 @@ export default function Dashboard() {
           <strong>{myAttendance?.totalDays || 0}</strong>
           <p>Your saved attendance days</p>
         </div>
+
+        <div className="stat-card activity-preview-card">
+          <span>Activities Done</span>
+          <strong>{activityStats?.completed || 0}</strong>
+          <p>
+            {activityStats
+              ? `${activityStats.pending} pending, ${activityStats.overdue} overdue`
+              : "No activities yet"}
+          </p>
+        </div>
+      </section>
+
+      <section className="panel activity-overview-panel">
+        <div className="calendar-header">
+          <div>
+            <h2>Activities Overview</h2>
+            <p className="panel-subtitle">Upcoming assignments, projects, and class tasks.</p>
+          </div>
+
+          <Link to="/activities" className="panel-link">
+            View Activities
+          </Link>
+        </div>
+
+        {upcomingActivities.length === 0 ? (
+          <p className="empty-state">No upcoming activities</p>
+        ) : (
+          <div className="dashboard-activity-list">
+            {upcomingActivities.map((activity) => (
+              <Link
+                key={activity.id}
+                to={`/activities?activity=${activity.id}`}
+                className={`dashboard-activity-card ${activity.type}`}
+              >
+                <span>{activity.type}</span>
+                <strong>{activity.title}</strong>
+                <small>Due {activity.deadline}</small>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       <div className="flow">

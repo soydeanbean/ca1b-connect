@@ -2,10 +2,14 @@
 
 import type { User } from "firebase/auth";
 import {
+  collection,
   doc,
   getDoc,
+  getDocs,
+  query,
   setDoc,
   updateDoc,
+  where,
   serverTimestamp
 } from "firebase/firestore";
 
@@ -71,6 +75,18 @@ export async function getUserProfile(uid: string) {
   }
 
   return snap.data() as UserProfile;
+}
+
+export async function getClassProfiles() {
+  const profilesQuery = query(
+    collection(db, PROFILE_COLLECTION),
+    where("class", "==", "CA1B")
+  );
+  const snap = await getDocs(profilesQuery);
+
+  return snap.docs
+    .map((profileDoc) => profileDoc.data() as UserProfile)
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function updateMyProfile(

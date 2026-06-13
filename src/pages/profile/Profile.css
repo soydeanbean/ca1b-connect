@@ -296,18 +296,25 @@
 
 /* ================= ATTENDANCE ================= */
 
-.profile-attendance-card {
+.profile-attendance-card,
+.profile-activity-card {
   padding: 20px;
 }
 
-.profile-attendance-summary {
+.profile-attendance-summary,
+.profile-activity-summary {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
 
-.profile-attendance-summary div {
+.profile-activity-summary {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.profile-attendance-summary div,
+.profile-activity-summary div {
   padding: 14px;
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -315,7 +322,8 @@
   background: var(--surface-raised);
 }
 
-.profile-attendance-summary span {
+.profile-attendance-summary span,
+.profile-activity-summary span {
   display: block;
 
   color: var(--muted);
@@ -324,7 +332,8 @@
   text-transform: uppercase;
 }
 
-.profile-attendance-summary strong {
+.profile-attendance-summary strong,
+.profile-activity-summary strong {
   display: block;
   margin-top: 8px;
 
@@ -409,7 +418,8 @@
 }
 
 @media (max-width: 768px) {
-  .profile-attendance-summary {
+  .profile-attendance-summary,
+  .profile-activity-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -466,7 +476,8 @@
 }
 
 @media (max-width: 480px) {
-  .profile-attendance-summary {
+  .profile-attendance-summary,
+  .profile-activity-summary {
     grid-template-columns: 1fr;
   }
 }

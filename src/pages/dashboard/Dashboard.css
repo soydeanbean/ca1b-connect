@@ -66,7 +66,7 @@
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -82,6 +82,10 @@
 
 .attendance-preview-card {
   border-left: 4px solid var(--primary);
+}
+
+.activity-preview-card {
+  border-left: 4px solid #7950f2;
 }
 
 .stat-card span {
@@ -134,6 +138,85 @@
   margin-bottom: 14px;
   font-size: 20px;
   line-height: 1.2;
+}
+
+.panel-subtitle {
+  margin-top: -8px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.panel-link {
+  display: inline-flex;
+  padding: 9px 13px;
+  border-radius: 999px;
+  background: var(--button-bg);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 850;
+  transition: var(--transition);
+}
+
+.panel-link:hover {
+  background: var(--primary);
+  color: #111;
+  transform: translateY(-1px);
+}
+
+.dashboard-activity-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dashboard-activity-card {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: 14px;
+  background: var(--surface-raised);
+  transition: var(--transition);
+}
+
+.dashboard-activity-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 140, 0, 0.35);
+}
+
+.dashboard-activity-card.assignment {
+  border-left-color: #1c7ed6;
+}
+
+.dashboard-activity-card.project {
+  border-left-color: #7950f2;
+}
+
+.dashboard-activity-card.activity {
+  border-left-color: var(--primary);
+}
+
+.dashboard-activity-card span {
+  display: inline-flex;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: var(--button-bg);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.dashboard-activity-card strong {
+  display: block;
+  margin-top: 10px;
+  line-height: 1.2;
+}
+
+.dashboard-activity-card small {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-weight: 750;
 }
 
 /* ================= SCHEDULE ================= */
@@ -451,6 +534,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .dashboard-activity-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .calendar-layout {
     flex-direction: column;
   }
@@ -478,6 +565,10 @@
   }
 
   .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-activity-list {
     grid-template-columns: 1fr;
   }
 

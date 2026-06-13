@@ -98,7 +98,11 @@ export function useAttendance(uid?: string) {
 
   useEffect(() => {
     if (!uid || loading) return;
-    loadAttendance(selectedDate);
+    const refreshSelectedDate = async () => {
+      await loadAttendance(selectedDate);
+    };
+
+    refreshSelectedDate();
   }, [uid, loading, selectedDate, loadAttendance]);
 
   const createToday = useCallback(async () => {

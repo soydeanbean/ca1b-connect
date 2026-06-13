@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 import { logoutUser } from "../../services/authService";
+import { searchGlobal, type GlobalSearchResult } from "../../services/searchService";
 import "./Navbar.css";
 
 import ca1b_logo from "../../assets/logos/ca1b.png";
@@ -15,8 +16,12 @@ export default function Navbar() {
   const [profileOpen, setProfileOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<GlobalSearchResult[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const profileRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
   // 🌙 DARK MODE
@@ -28,6 +33,26 @@ export default function Navbar() {
     }
   }, [darkMode]);
 
+  useEffect(() => {
+    const timeout = window.setTimeout(async () => {
+      if (searchQuery.trim().length < 2) {
+        setSearchResults([]);
+        return;
+      }
+
+      try {
+        const results = await searchGlobal(searchQuery);
+        setSearchResults(results);
+        setSearchOpen(true);
+      } catch (error) {
+        console.error("Search failed:", error);
+        setSearchResults([]);
+      }
+    }, 220);
+
+    return () => window.clearTimeout(timeout);
+  }, [searchQuery]);
+
   // ❌ CLOSE PROFILE ON OUTSIDE CLICK
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -36,6 +61,13 @@ export default function Navbar() {
         !profileRef.current.contains(event.target as Node)
       ) {
         setProfileOpen(false);
+      }
+
+      if (
+        searchRef.current &&
+        !searchRef.current.contains(event.target as Node)
+      ) {
+        setSearchOpen(false);
       }
     };
 
@@ -67,6 +99,13 @@ export default function Navbar() {
     navigate("/login");
   };
 
+  const handleSearchResult = (result: GlobalSearchResult) => {
+    setSearchQuery("");
+    setSearchResults([]);
+    setSearchOpen(false);
+    navigate(result.path);
+  };
+
   return (
     <>
       <header className="navbar">
@@ -82,17 +121,41 @@ export default function Navbar() {
           </Link>
 
           {/* SEARCH */}
-          <div className="search-container">
+          <div className="search-container" ref={searchRef}>
             <input
               type="text"
-              placeholder="Search dashboard, activities, events..."
+              placeholder="Search students, attendance, activities, events..."
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              onFocus={() => setSearchOpen(true)}
             />
+
+            {searchOpen && searchQuery.trim().length >= 2 && (
+              <div className="global-search-dropdown">
+                {searchResults.length === 0 ? (
+                  <div className="global-search-empty">No matches found</div>
+                ) : (
+                  searchResults.map((result) => (
+                    <button
+                      type="button"
+                      key={result.id}
+                      onClick={() => handleSearchResult(result)}
+                    >
+                      <span>{result.category}</span>
+                      <strong>{result.label}</strong>
+                      <small>{result.description}</small>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
           </div>
 
           {/* NAV */}
           <nav className={`nav-links ${menuOpen ? "active" : ""}`}>
             <Link to="/">Dashboard</Link>
             <Link to="/attendance">Attendance</Link>
+            <Link to="/activities">Activities</Link>
             <Link to="/students">Students</Link>
             <Link to="/calendar">Calendar</Link>
           </nav>

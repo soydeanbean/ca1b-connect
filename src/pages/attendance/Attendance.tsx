@@ -1,9 +1,10 @@
 // src/pages/attendance/Attendance.tsx
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import * as XLSX from "xlsx";
 
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 import { useAttendance } from "../../hooks/useAttendance";
 import type { AttendanceRecord, AttendanceStatus } from "../../types/Attendance";
 
@@ -82,7 +83,8 @@ function exportAttendanceExcel(
 
 export default function Attendance() {
   const { user } = useAuth();
-  const [search, setSearch] = useState("");
+  const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState(searchParams.get("search") || "");
 
   const {
     canEdit,

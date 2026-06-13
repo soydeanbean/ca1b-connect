@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import { FirebaseError } from "firebase/app";
 import { loginUser, loginWithGoogle } from "../../services/authService";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../hooks/useAuth";
 import "./Auth.css";
 
 export default function Login() {
@@ -30,8 +31,10 @@ export default function Login() {
       }
 
       navigate("/");
-    } catch (err: any) {
-      switch (err.code) {
+    } catch (err: unknown) {
+      const code = err instanceof FirebaseError ? err.code : "";
+
+      switch (code) {
         case "auth/user-not-found":
           setError("Email not found");
           break;
@@ -56,9 +59,9 @@ export default function Login() {
       setError("");
       await loginWithGoogle();
       navigate("/");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("GOOGLE ERROR:", err);
-      setError(err.code || err.message);
+      setError(err instanceof FirebaseError ? err.code : "Google login failed");
     }
   };
 
