@@ -10,6 +10,7 @@ import { officers } from "../../data/Officers";
 import { PH_HOLIDAYS_2026 } from "../../data/Holidays";
 
 import ScheduleModal from "../../components/common/ScheduleModal";
+import ClassCountdown from "../../components/common/ClassCountdown";
 
 import { seedUserData } from "../../services/seedUserData";
 import { CLASS_STUDENT_COUNT, seedClassData } from "../../services/seedClassData";
@@ -358,6 +359,8 @@ export default function Dashboard() {
           <p className="live-status">{nowText}</p>
         </div>
       </section>
+
+      <ClassCountdown schedule={schedule} />
 
       <section className="stats-grid">
         <div className="stat-card">

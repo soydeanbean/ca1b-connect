@@ -11,6 +11,7 @@ import {
 
 import { db } from "../lib/firebase";
 import type { ClassCalendarEvent, EventFormValues } from "../types/Event";
+import { createGlobalNotification } from "./notificationService";
 
 const EVENT_COLLECTION = "classCA1B_Events";
 
@@ -43,6 +44,21 @@ export async function createCalendarEvent(values: EventFormValues, creatorUid: s
   };
 
   await setDoc(eventRef, event);
+
+  // 🔔 Notify all students about the new event
+  try {
+    await createGlobalNotification({
+      type: "major",
+      category: "event",
+      title: `New Event: ${values.title}`,
+      message: `${values.type.charAt(0).toUpperCase() + values.type.slice(1)} "${values.title}" on ${values.date}${values.time ? ` at ${values.time}` : ""}${values.location ? ` at ${values.location}` : ""}`,
+      senderUid: creatorUid,
+      link: "/calendar"
+    });
+  } catch (err) {
+    console.error("Failed to send event notification:", err);
+  }
+
   return event;
 }
 

@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { logoutUser } from "../../services/authService";
 import { searchGlobal, type GlobalSearchResult } from "../../services/searchService";
+import NotificationBell from "../notifications/NotificationBell";
 import "./Navbar.css";
 
 import ca1b_logo from "../../assets/logos/ca1b.png";
@@ -19,6 +20,7 @@ export default function Navbar() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<GlobalSearchResult[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const profileRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -74,6 +76,34 @@ export default function Navbar() {
     document.addEventListener("mousedown", handleClickOutside);
     return () =>
       document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Load notification preference from settings
+  useEffect(() => {
+    const stored = localStorage.getItem("ca1b_settings");
+    if (stored) {
+      try {
+        const prefs = JSON.parse(stored);
+        setNotificationsEnabled(prefs.notificationsEnabled ?? true);
+      } catch {
+        // ignore
+      }
+    }
+
+    const handleStorage = () => {
+      const updated = localStorage.getItem("ca1b_settings");
+      if (updated) {
+        try {
+          const prefs = JSON.parse(updated);
+          setNotificationsEnabled(prefs.notificationsEnabled ?? true);
+        } catch {
+          // ignore
+        }
+      }
+    };
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
   // ❌ CLOSE MODAL ON OUTSIDE CLICK
@@ -158,10 +188,16 @@ export default function Navbar() {
             <Link to="/activities">Activities</Link>
             <Link to="/students">Students</Link>
             <Link to="/calendar">Calendar</Link>
+            <Link to="/todos">To-Do</Link>
+            <Link to="/priority">Priority</Link>
+            <Link to="/chat">Chat</Link>
           </nav>
 
           {/* RIGHT */}
           <div className="navbar-right">
+
+            {/* NOTIFICATIONS */}
+            {notificationsEnabled && <NotificationBell />}
 
             {/* THEME */}
             <button
