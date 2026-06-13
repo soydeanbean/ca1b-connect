@@ -1,16 +1,19 @@
+// src/pages/dashboard/Dashboard.tsx
+
 import { useEffect, useMemo, useState } from "react";
-import { useAuth } from "../../context/AuthContext";
 import { doc, getDoc } from "firebase/firestore";
+
+import { useAuth } from "../../context/AuthContext";
 import { db } from "../../lib/firebase";
 
 import type { Officer } from "../../data/Officers";
 import { officers } from "../../data/Officers";
+import { PH_HOLIDAYS_2026 } from "../../data/Holidays";
 
 import ScheduleModal from "../../components/common/ScheduleModal";
+
 import { seedUserData } from "../../services/seedUserData";
 import { seedClassData } from "../../services/seedClassData";
-
-import { PH_HOLIDAYS_2026 } from "../../data/Holidays";
 import { exportToGoogleCalendar } from "../../services/calendarService";
 
 import "./Dashboard.css";
@@ -24,12 +27,13 @@ type WeekDay =
   | "Friday"
   | "Saturday";
 
+type ScheduleStatus = "done" | "ongoing" | "upcoming";
+
 type ScheduleItem = {
   day: WeekDay;
   time: string;
   subject: string;
   room: string;
-  status: "done" | "ongoing" | "upcoming";
 };
 
 type CalendarEvent = {
@@ -43,6 +47,13 @@ type CalendarViewItem = {
   type: "class" | "event" | "holiday";
   title: string;
   description?: string;
+};
+
+type ClassData = {
+  schedule?: ScheduleItem[];
+  events?: CalendarEvent[];
+  students?: unknown[];
+  studentCount?: number;
 };
 
 const MONTHS = [
@@ -69,18 +80,17 @@ const WEEKDAYS: WeekDay[] = [
   "Saturday"
 ];
 
-// ---------------- TIME PARSER ----------------
 function parseTimeRange(time: string) {
   const [startRaw, endRaw] = time.split(" - ");
 
-  const parse = (t: string) => {
-    const [hourMin, meridian] = t.trim().split(" ");
-    let [h, m] = hourMin.split(":").map(Number);
+  const parse = (value: string) => {
+    const [hourMin, meridian] = value.trim().split(" ");
+    let [hours, minutes] = hourMin.split(":").map(Number);
 
-    if (meridian === "PM" && h !== 12) h += 12;
-    if (meridian === "AM" && h === 12) h = 0;
+    if (meridian === "PM" && hours !== 12) hours += 12;
+    if (meridian === "AM" && hours === 12) hours = 0;
 
-    return h * 60 + m;
+    return hours * 60 + minutes;
   };
 
   return {
@@ -89,84 +99,94 @@ function parseTimeRange(time: string) {
   };
 }
 
-export default function Dashboard() {
-  const { user } = useAuth();
-
-  const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const [selectedSchedule, setSelectedSchedule] = useState<ScheduleItem | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-
-  const [selectedOfficer, setSelectedOfficer] = useState<Officer | null>(null);
-
-  const [monthIndex, setMonthIndex] = useState(0);
-  const [selectedDay, setSelectedDay] = useState<CalendarViewItem[] | null>(null);
-
-  const currentMonth = MONTHS[monthIndex];
-
-  const today = new Date();
-
-  const weekday = today.toLocaleDateString("en-PH", {
+function getManilaWeekday(date: Date): WeekDay {
+  return date.toLocaleDateString("en-PH", {
     weekday: "long",
     timeZone: "Asia/Manila"
   }) as WeekDay;
+}
 
-  const phDate = today.toLocaleDateString("en-PH", {
+function getManilaDateText(date: Date) {
+  return date.toLocaleDateString("en-PH", {
     year: "numeric",
     month: "long",
     day: "numeric",
     timeZone: "Asia/Manila"
   });
+}
 
-  const filteredSchedule = schedule.filter((s) => s.day === weekday);
+function getScheduleStatus(item: ScheduleItem): ScheduleStatus {
+  const now = new Date();
+  const currentDay = getManilaWeekday(now);
 
-  // ---------------- LIVE TRACKER ----------------
-  const [nowText, setNowText] = useState<string>("");
+  const currentDayIndex = WEEKDAYS.indexOf(currentDay);
+  const scheduleDayIndex = WEEKDAYS.indexOf(item.day);
+
+  if (scheduleDayIndex < currentDayIndex) return "done";
+  if (scheduleDayIndex > currentDayIndex) return "upcoming";
+
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const { start, end } = parseTimeRange(item.time);
+
+  if (nowMinutes > end) return "done";
+  if (nowMinutes >= start && nowMinutes <= end) return "ongoing";
+
+  return "upcoming";
+}
+
+function getStudentCount(data: ClassData) {
+  if (Array.isArray(data.students)) return data.students.length;
+  if (typeof data.studentCount === "number") return data.studentCount;
+
+  return 0;
+}
+
+export default function Dashboard() {
+  const { user } = useAuth();
+
+  const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [studentCount, setStudentCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  const [selectedSchedule, setSelectedSchedule] = useState<ScheduleItem | null>(
+    null
+  );
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const [selectedOfficer, setSelectedOfficer] = useState<Officer | null>(null);
+
+  const [monthIndex, setMonthIndex] = useState(0);
+  const [selectedDay, setSelectedDay] = useState<CalendarViewItem[] | null>(
+    null
+  );
+
+  const [nowText, setNowText] = useState("");
+
+  const today = new Date();
+  const weekday = getManilaWeekday(today);
+  const phDate = getManilaDateText(today);
+
+  const currentMonth = MONTHS[monthIndex];
+
+  const todaysSchedule = useMemo(
+    () => schedule.filter((item) => item.day === weekday),
+    [schedule, weekday]
+  );
+
+  const daysInMonth = useMemo(
+    () => new Date(currentMonth.year, currentMonth.month + 1, 0).getDate(),
+    [currentMonth]
+  );
 
   useEffect(() => {
-    const update = () => {
-      if (!filteredSchedule.length) {
-        setNowText("No classes today");
+    const loadDashboardData = async () => {
+      if (!user) {
+        setLoading(false);
         return;
       }
 
-      const now = new Date();
-      const minutes = now.getHours() * 60 + now.getMinutes();
-
-      const parsed = filteredSchedule
-        .map((s) => {
-          const t = parseTimeRange(s.time);
-          return { ...s, start: t.start, end: t.end };
-        })
-        .sort((a, b) => a.start - b.start);
-
-      const current = parsed.find((s) => minutes >= s.start && minutes <= s.end);
-      const next = parsed.find((s) => s.start > minutes);
-
-      if (minutes >= 720 && minutes <= 780) {
-        setNowText("🍽️ LUNCH TIME");
-        return;
-      }
-
-      if (current) {
-        setNowText(`📚 NOW: ${current.subject}`);
-      } else if (next) {
-        setNowText(`⏭ NEXT: ${next.subject} at ${next.time}`);
-      } else {
-        setNowText("🆓 FREE TIME / SCHOOL OVER");
-      }
-    };
-
-    update();
-    const interval = setInterval(update, 60000);
-    return () => clearInterval(interval);
-  }, [filteredSchedule]);
-
-  useEffect(() => {
-    const init = async () => {
-      if (!user) return;
+      setLoading(true);
 
       await seedClassData();
       await seedUserData(user.uid);
@@ -174,30 +194,71 @@ export default function Dashboard() {
       const snap = await getDoc(doc(db, "classCA1B", "data"));
 
       if (snap.exists()) {
-        const data = snap.data();
+        const data = snap.data() as ClassData;
+
         setSchedule(data.schedule || []);
         setEvents(data.events || []);
+        setStudentCount(getStudentCount(data));
       }
 
       setLoading(false);
     };
 
-    init();
+    loadDashboardData();
   }, [user]);
 
-  const daysInMonth = useMemo(
-    () => new Date(currentMonth.year, currentMonth.month + 1, 0).getDate(),
-    [currentMonth]
-  );
+  useEffect(() => {
+    const updateLiveTracker = () => {
+      if (!todaysSchedule.length) {
+        setNowText("No classes today");
+        return;
+      }
+
+      const now = new Date();
+      const minutes = now.getHours() * 60 + now.getMinutes();
+
+      const parsedSchedule = todaysSchedule
+        .map((item) => {
+          const time = parseTimeRange(item.time);
+          return { ...item, start: time.start, end: time.end };
+        })
+        .sort((a, b) => a.start - b.start);
+
+      const currentClass = parsedSchedule.find(
+        (item) => minutes >= item.start && minutes <= item.end
+      );
+      const nextClass = parsedSchedule.find((item) => item.start > minutes);
+
+      if (minutes >= 720 && minutes <= 780) {
+        setNowText("Lunch time");
+        return;
+      }
+
+      if (currentClass) {
+        setNowText(`Now: ${currentClass.subject}`);
+        return;
+      }
+
+      if (nextClass) {
+        setNowText(`Next: ${nextClass.subject} at ${nextClass.time}`);
+        return;
+      }
+
+      setNowText("Free time / school over");
+    };
+
+    updateLiveTracker();
+
+    const interval = window.setInterval(updateLiveTracker, 60000);
+    return () => window.clearInterval(interval);
+  }, [todaysSchedule]);
 
   const getDateInfo = (day: number) => {
     const date = new Date(Date.UTC(currentMonth.year, currentMonth.month, day));
-
     const dateStr = date.toISOString().split("T")[0];
     const weekdayShort = WEEKDAYS[date.getUTCDay()];
 
     const items: CalendarViewItem[] = [];
-
     const isWeekend = date.getUTCDay() === 0 || date.getUTCDay() === 6;
 
     if (isWeekend) {
@@ -219,15 +280,15 @@ export default function Dashboard() {
     }
 
     events
-      .filter((e) => e.date === dateStr)
-      .forEach((e) =>
+      .filter((event) => event.date === dateStr)
+      .forEach((event) => {
         items.push({
-          date: e.date,
+          date: event.date,
           type: "event",
-          title: e.title,
-          description: e.description
-        })
-      );
+          title: event.title,
+          description: event.description
+        });
+      });
 
     if (items.length === 0) {
       items.push({
@@ -251,12 +312,12 @@ export default function Dashboard() {
     await exportToGoogleCalendar(info.items);
   };
 
-  if (loading) return <div className="dashboard">Loading...</div>;
+  if (loading) {
+    return <div className="dashboard">Loading...</div>;
+  }
 
   return (
     <div className="dashboard">
-
-      {/* HERO */}
       <section className="hero">
         <div>
           <h1>CA1B Connect</h1>
@@ -264,38 +325,45 @@ export default function Dashboard() {
         </div>
 
         <div className="hero-date">
-          <p>{weekday} • {phDate}</p>
-          <p style={{ marginTop: 6, fontWeight: 700 }}>{nowText}</p>
+          <p>
+            {weekday} • {phDate}
+          </p>
+          <p className="live-status">{nowText}</p>
+        </div>
+      </section>
+
+      <section className="stats-grid">
+        <div className="stat-card">
+          <span>Students</span>
+          <strong>{studentCount}</strong>
+          <p>Current CA1B class members</p>
         </div>
       </section>
 
       <div className="flow">
-
-        {/* SCHEDULE */}
         <section className="panel">
           <h2>Today’s Schedule</h2>
 
-          {filteredSchedule.length === 0 ? (
+          {todaysSchedule.length === 0 ? (
             <p className="empty-state">No classes scheduled</p>
           ) : (
-            filteredSchedule.map((s, i) => (
+            todaysSchedule.map((item, index) => (
               <div
-                key={i}
-                className={`schedule ${s.status}`}
+                key={`${item.day}-${item.time}-${index}`}
+                className={`schedule ${getScheduleStatus(item)}`}
                 onClick={() => {
-                  setSelectedSchedule(s);
+                  setSelectedSchedule(item);
                   setModalOpen(true);
                 }}
               >
-                <span>{s.time}</span>
-                <b>{s.subject}</b>
-                <span>{s.room}</span>
+                <span>{item.time}</span>
+                <b>{item.subject}</b>
+                <span>{item.room}</span>
               </div>
             ))
           )}
         </section>
 
-        {/* CALENDAR */}
         <section className="panel">
           <div className="calendar-header">
             <h2>Calendar</h2>
@@ -303,11 +371,11 @@ export default function Dashboard() {
             <div className="month-select">
               <select
                 value={monthIndex}
-                onChange={(e) => setMonthIndex(Number(e.target.value))}
+                onChange={(event) => setMonthIndex(Number(event.target.value))}
               >
-                {MONTHS.map((m, i) => (
-                  <option key={i} value={i}>
-                    {m.label}
+                {MONTHS.map((month, index) => (
+                  <option key={month.label} value={index}>
+                    {month.label}
                   </option>
                 ))}
               </select>
@@ -315,22 +383,27 @@ export default function Dashboard() {
           </div>
 
           <div className="calendar-layout">
-
             <div className="calendar-list">
-              {Array.from({ length: daysInMonth }).map((_, i) => {
-                const { date, weekdayShort } = getDateInfo(i + 1);
+              {Array.from({ length: daysInMonth }).map((_, index) => {
+                const day = index + 1;
+                const { date, weekdayShort } = getDateInfo(day);
 
                 return (
-                  <div key={i} className="day-item">
-                    <div className="day-number">{i + 1}</div>
+                  <div key={day} className="day-item">
+                    <div className="day-number">{day}</div>
+
                     <div className="day-meta">
                       <span>{weekdayShort}</span>
                       <small>{date.toISOString().split("T")[0]}</small>
                     </div>
 
                     <div className="day-actions">
-                      <button onClick={() => handleOpenDay(i + 1)}>View</button>
-                      <button onClick={() => handleGoogleSync(i + 1)}>Sync</button>
+                      <button type="button" onClick={() => handleOpenDay(day)}>
+                        View
+                      </button>
+                      <button type="button" onClick={() => handleGoogleSync(day)}>
+                        Sync
+                      </button>
                     </div>
                   </div>
                 );
@@ -341,8 +414,8 @@ export default function Dashboard() {
               {!selectedDay ? (
                 <div className="empty-state">Select a day</div>
               ) : (
-                selectedDay.map((item, i) => (
-                  <div key={i} className={`cal-card ${item.type}`}>
+                selectedDay.map((item, index) => (
+                  <div key={`${item.date}-${item.title}-${index}`} className={`cal-card ${item.type}`}>
                     <b>{item.title}</b>
                     <p>{item.description}</p>
                     <span>{item.type}</span>
@@ -350,25 +423,24 @@ export default function Dashboard() {
                 ))
               )}
             </div>
-
           </div>
         </section>
       </div>
 
-      {/* OFFICERS */}
       <section className="officers">
         <h2>Class Officers</h2>
 
         <div className="officer-layout">
           <div className="officer-list">
-            {officers.map((o) => (
-              <div
-                key={o.role}
+            {officers.map((officer) => (
+              <button
+                type="button"
+                key={officer.role}
                 className="officer-item"
-                onClick={() => setSelectedOfficer(o)}
+                onClick={() => setSelectedOfficer(officer)}
               >
-                {o.role}
-              </div>
+                {officer.role}
+              </button>
             ))}
           </div>
 
@@ -387,7 +459,14 @@ export default function Dashboard() {
 
       <ScheduleModal
         open={modalOpen}
-        item={selectedSchedule}
+        item={
+          selectedSchedule
+            ? {
+                ...selectedSchedule,
+                status: getScheduleStatus(selectedSchedule)
+              }
+            : null
+        }
         onClose={() => setModalOpen(false)}
       />
     </div>

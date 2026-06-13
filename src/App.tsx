@@ -1,3 +1,5 @@
+// src/App.tsx
+
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Navbar from "./components/common/Navbar";
@@ -6,6 +8,7 @@ import Dashboard from "./pages/dashboard/Dashboard";
 import Attendance from "./pages/attendance/Attendance";
 import Students from "./pages/students/Students";
 import CalendarPage from "./pages/calendar/CalendarPage";
+import Profile from "./pages/profile/Profile";
 
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
@@ -18,7 +21,6 @@ import { useAuth } from "./context/AuthContext";
 function AppRoutes() {
   const { loading } = useAuth();
 
-  // 🔥 CRITICAL FIX: wait for Firebase restore
   if (loading) {
     return (
       <div
@@ -28,7 +30,7 @@ function AppRoutes() {
           alignItems: "center",
           justifyContent: "center",
           background: "#0f0f0f",
-          color: "white",
+          color: "white"
         }}
       >
         Loading CA1B Connect...
@@ -38,7 +40,6 @@ function AppRoutes() {
 
   return (
     <Routes>
-      {/* PUBLIC */}
       <Route
         path="/login"
         element={
@@ -57,7 +58,6 @@ function AppRoutes() {
         }
       />
 
-      {/* PROTECTED */}
       <Route
         path="/*"
         element={
@@ -68,9 +68,11 @@ function AppRoutes() {
               <main className="app-content">
                 <Routes>
                   <Route path="/" element={<Dashboard />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/attendance" element={<Attendance />} />
                   <Route path="/students" element={<Students />} />
                   <Route path="/calendar" element={<CalendarPage />} />
+                  <Route path="/profile" element={<Profile />} />
                 </Routes>
               </main>
             </div>
