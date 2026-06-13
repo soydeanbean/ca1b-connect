@@ -1,5 +1,3 @@
-/* src/pages/profile/Profile.css */
-
 .profile-page {
   width: 100%;
   max-width: 1180px;
@@ -14,7 +12,8 @@
 }
 
 .profile-loading,
-.profile-message {
+.profile-message,
+.profile-warning {
   padding: 16px;
   border: 1px solid var(--border);
   border-radius: 14px;
@@ -22,6 +21,11 @@
   background: var(--surface);
   color: var(--text);
   box-shadow: var(--soft-shadow);
+}
+
+.profile-warning {
+  border-color: rgba(255, 140, 0, 0.45);
+  background: rgba(255, 140, 0, 0.12);
 }
 
 .profile-hero {
@@ -179,7 +183,6 @@
 }
 
 .profile-form input,
-.profile-form select,
 .profile-form textarea {
   width: 100%;
   min-height: 44px;
@@ -200,14 +203,12 @@
 }
 
 .profile-form input:focus,
-.profile-form select:focus,
 .profile-form textarea:focus {
   border-color: rgba(255, 140, 0, 0.7);
   box-shadow: 0 0 0 3px rgba(255, 140, 0, 0.14);
 }
 
 .profile-form input:disabled,
-.profile-form select:disabled,
 .profile-form textarea:disabled {
   opacity: 0.78;
   cursor: default;
@@ -259,6 +260,7 @@
   margin-top: 4px;
   color: var(--muted);
   font-size: 14px;
+  word-break: break-word;
 }
 
 .profile-mini-list {
@@ -292,6 +294,106 @@
   word-break: break-word;
 }
 
+/* ================= ATTENDANCE ================= */
+
+.profile-attendance-card {
+  padding: 20px;
+}
+
+.profile-attendance-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.profile-attendance-summary div {
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+
+  background: var(--surface-raised);
+}
+
+.profile-attendance-summary span {
+  display: block;
+
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.profile-attendance-summary strong {
+  display: block;
+  margin-top: 8px;
+
+  color: var(--text);
+  font-size: 26px;
+  line-height: 1;
+}
+
+.profile-attendance-empty {
+  padding: 18px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+
+  background: var(--surface-raised);
+  color: var(--muted);
+  text-align: center;
+}
+
+.profile-attendance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profile-attendance-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+
+  padding: 13px;
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: 12px;
+
+  background: var(--surface-raised);
+}
+
+.profile-attendance-row.present {
+  border-left-color: #51cf66;
+}
+
+.profile-attendance-row.late {
+  border-left-color: #ffd43b;
+}
+
+.profile-attendance-row.absent {
+  border-left-color: #ff6b6b;
+}
+
+.profile-attendance-row.excused {
+  border-left-color: #4dabf7;
+}
+
+.profile-attendance-row strong {
+  display: block;
+}
+
+.profile-attendance-row span,
+.profile-attendance-row p {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.profile-attendance-row p {
+  text-align: right;
+}
+
+/* ================= RESPONSIVE ================= */
+
 @media (max-width: 900px) {
   .profile-grid {
     grid-template-columns: 1fr;
@@ -303,6 +405,20 @@
 
   .profile-preview-img {
     max-height: 320px;
+  }
+}
+
+@media (max-width: 768px) {
+  .profile-attendance-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .profile-attendance-row {
+    flex-direction: column;
+  }
+
+  .profile-attendance-row p {
+    text-align: left;
   }
 }
 
@@ -346,5 +462,11 @@
   .profile-save-btn,
   .profile-secondary-btn {
     width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-attendance-summary {
+    grid-template-columns: 1fr;
   }
 }

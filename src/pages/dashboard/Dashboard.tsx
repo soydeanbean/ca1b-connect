@@ -1,5 +1,3 @@
-// src/pages/dashboard/Dashboard.tsx
-
 import { useEffect, useMemo, useState } from "react";
 import { doc, getDoc } from "firebase/firestore";
 
@@ -13,8 +11,11 @@ import { PH_HOLIDAYS_2026 } from "../../data/Holidays";
 import ScheduleModal from "../../components/common/ScheduleModal";
 
 import { seedUserData } from "../../services/seedUserData";
-import { seedClassData } from "../../services/seedClassData";
+import { CLASS_STUDENT_COUNT, seedClassData } from "../../services/seedClassData";
 import { exportToGoogleCalendar } from "../../services/calendarService";
+import { getStudentAttendanceOverview } from "../../services/attendanceService";
+
+import type { PersonalAttendanceOverview } from "../../types/Attendance";
 
 import "./Dashboard.css";
 
@@ -54,6 +55,7 @@ type ClassData = {
   events?: CalendarEvent[];
   students?: unknown[];
   studentCount?: number;
+  studentsCount?: number;
 };
 
 const MONTHS = [
@@ -137,8 +139,9 @@ function getScheduleStatus(item: ScheduleItem): ScheduleStatus {
 function getStudentCount(data: ClassData) {
   if (Array.isArray(data.students)) return data.students.length;
   if (typeof data.studentCount === "number") return data.studentCount;
+  if (typeof data.studentsCount === "number") return data.studentsCount;
 
-  return 0;
+  return CLASS_STUDENT_COUNT;
 }
 
 export default function Dashboard() {
@@ -146,7 +149,9 @@ export default function Dashboard() {
 
   const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [studentCount, setStudentCount] = useState(0);
+  const [studentCount, setStudentCount] = useState(CLASS_STUDENT_COUNT);
+  const [myAttendance, setMyAttendance] =
+    useState<PersonalAttendanceOverview | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [selectedSchedule, setSelectedSchedule] = useState<ScheduleItem | null>(
@@ -180,31 +185,38 @@ export default function Dashboard() {
   );
 
   useEffect(() => {
-    const loadDashboardData = async () => {
+    const init = async () => {
       if (!user) {
         setLoading(false);
         return;
       }
 
-      setLoading(true);
+      try {
+        await seedClassData();
+        await seedUserData(user.uid);
 
-      await seedClassData();
-      await seedUserData(user.uid);
+        const snap = await getDoc(doc(db, "classCA1B", "data"));
 
-      const snap = await getDoc(doc(db, "classCA1B", "data"));
+        if (snap.exists()) {
+          const data = snap.data() as ClassData;
 
-      if (snap.exists()) {
-        const data = snap.data() as ClassData;
+          setSchedule(data.schedule || []);
+          setEvents(data.events || []);
+          setStudentCount(getStudentCount(data));
+        } else {
+          setStudentCount(CLASS_STUDENT_COUNT);
+        }
 
-        setSchedule(data.schedule || []);
-        setEvents(data.events || []);
-        setStudentCount(getStudentCount(data));
+        const overview = await getStudentAttendanceOverview(user.uid);
+        setMyAttendance(overview);
+      } catch (error) {
+        console.error("Dashboard load failed:", error);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
-    loadDashboardData();
+    init();
   }, [user]);
 
   useEffect(() => {
@@ -338,6 +350,22 @@ export default function Dashboard() {
           <strong>{studentCount}</strong>
           <p>Current CA1B class members</p>
         </div>
+
+        <div className="stat-card attendance-preview-card">
+          <span>My Attendance</span>
+          <strong>{myAttendance ? `${myAttendance.attendanceRate}%` : "0%"}</strong>
+          <p>
+            {myAttendance && myAttendance.totalDays > 0
+              ? `${myAttendance.present} present, ${myAttendance.late} late, ${myAttendance.absent} absent`
+              : "No attendance records yet"}
+          </p>
+        </div>
+
+        <div className="stat-card">
+          <span>Recorded Days</span>
+          <strong>{myAttendance?.totalDays || 0}</strong>
+          <p>Your saved attendance days</p>
+        </div>
       </section>
 
       <div className="flow">
@@ -415,7 +443,10 @@ export default function Dashboard() {
                 <div className="empty-state">Select a day</div>
               ) : (
                 selectedDay.map((item, index) => (
-                  <div key={`${item.date}-${item.title}-${index}`} className={`cal-card ${item.type}`}>
+                  <div
+                    key={`${item.date}-${item.title}-${index}`}
+                    className={`cal-card ${item.type}`}
+                  >
                     <b>{item.title}</b>
                     <p>{item.description}</p>
                     <span>{item.type}</span>
@@ -436,7 +467,9 @@ export default function Dashboard() {
               <button
                 type="button"
                 key={officer.role}
-                className="officer-item"
+                className={`officer-item ${
+                  selectedOfficer?.role === officer.role ? "active" : ""
+                }`}
                 onClick={() => setSelectedOfficer(officer)}
               >
                 {officer.role}

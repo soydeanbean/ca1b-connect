@@ -1,5 +1,3 @@
-/* src/pages/dashboard/Dashboard.css */
-
 .dashboard {
   width: 100%;
   max-width: 1200px;
@@ -80,6 +78,10 @@
 
   background: var(--surface);
   box-shadow: var(--soft-shadow);
+}
+
+.attendance-preview-card {
+  border-left: 4px solid var(--primary);
 }
 
 .stat-card span {

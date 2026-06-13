@@ -1,3 +1,5 @@
+// src/services/authService.ts
+
 import { auth } from "../lib/firebase";
 
 import {
@@ -6,38 +8,25 @@ import {
   signOut,
   GoogleAuthProvider,
   sendEmailVerification,
-  signInWithPopup,
+  signInWithPopup
 } from "firebase/auth";
 
-export async function registerUser(
-  email: string,
-  password: string
-) {
-  const credential =
-    await createUserWithEmailAndPassword(
-      auth,
-      email,
-      password
-    );
+import { ensureUserProfile } from "./profileService";
 
-  await sendEmailVerification(
-    credential.user
-  );
+export async function registerUser(email: string, password: string) {
+  const credential = await createUserWithEmailAndPassword(auth, email, password);
 
+  await sendEmailVerification(credential.user);
   await signOut(auth);
 
   return credential;
 }
 
-export function loginUser(
-  email: string,
-  password: string
-) {
-  return signInWithEmailAndPassword(
-    auth,
-    email,
-    password
-  );
+export async function loginUser(email: string, password: string) {
+  const credential = await signInWithEmailAndPassword(auth, email, password);
+  await ensureUserProfile(credential.user);
+
+  return credential;
 }
 
 export function logoutUser() {
@@ -48,8 +37,11 @@ export async function loginWithGoogle() {
   const provider = new GoogleAuthProvider();
 
   provider.setCustomParameters({
-    prompt: "select_account",
+    prompt: "select_account"
   });
 
-  return signInWithPopup(auth, provider);
+  const credential = await signInWithPopup(auth, provider);
+  await ensureUserProfile(credential.user);
+
+  return credential;
 }
