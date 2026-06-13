@@ -20,7 +20,6 @@ import type {
   ClassActivity
 } from "../types/Activity";
 import type { UserProfile } from "../types/Profile";
-import { createGlobalNotification } from "./notificationService";
 
 const ACTIVITY_COLLECTION = "classCA1B_Activities";
 
@@ -127,21 +126,6 @@ export async function createActivity(
   }
 
   await setDoc(activityRef, activity);
-
-  // 🔔 Notify all students about the new activity
-  try {
-    await createGlobalNotification({
-      type: "major",
-      category: "assignment",
-      title: `New ${values.type}: ${values.title}`,
-      message: `${values.type === "assignment" ? "Assignment" : values.type === "project" ? "Project" : "Activity"} "${values.title}" has been posted. Deadline: ${values.deadline}`,
-      senderUid: creator.uid,
-      link: "/activities"
-    });
-  } catch (err) {
-    console.error("Failed to send activity notification:", err);
-  }
-
   return activity;
 }
 
