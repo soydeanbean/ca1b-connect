@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { updateProfile } from "firebase/auth";
 
 import { useAuth } from "../../hooks/useAuth";

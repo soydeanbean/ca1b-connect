@@ -83,6 +83,8 @@ const MONTHS = [
   { label: "April 2027", month: 3, year: 2027 }
 ];
 
+const EVENTS_COLLECTION = "classCA1B_Events";
+
 const WEEKDAYS: WeekDay[] = [
   "Sunday",
   "Monday",
