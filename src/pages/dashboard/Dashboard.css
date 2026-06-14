@@ -440,6 +440,18 @@
   border-left: 4px solid #51cf66;
 }
 
+.cal-card.assignment {
+  border-left-color: #1c7ed6 !important;
+}
+
+.cal-card.project {
+  border-left-color: #7950f2 !important;
+}
+
+.cal-card.activity {
+  border-left-color: var(--primary) !important;
+}
+
 /* ================= OFFICERS ================= */
 
 .officer-layout {

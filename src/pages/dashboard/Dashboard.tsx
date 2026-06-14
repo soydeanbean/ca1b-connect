@@ -11,8 +11,7 @@ import { PH_HOLIDAYS_2026 } from "../../data/Holidays";
 
 import ScheduleModal from "../../components/common/ScheduleModal";
 
-import { seedUserData } from "../../services/seedUserData";
-import { CLASS_STUDENT_COUNT, seedClassData } from "../../services/seedClassData";
+import { CLASS_STUDENT_COUNT } from "../../services/seedClassData";
 import { exportToGoogleCalendar } from "../../services/calendarService";
 import { getStudentAttendanceOverview } from "../../services/attendanceService";
 import { getActivities, getActivityStats, splitActivitiesForStudent } from "../../services/activityService";
@@ -41,9 +40,14 @@ type ScheduleItem = {
 };
 
 type CalendarEvent = {
+  id?: string;
   date: string;
   title: string;
-  description: string;
+  description?: string;
+  details?: string;
+  time?: string;
+  location?: string;
+  type?: string;
 };
 
 type CalendarViewItem = {
@@ -51,6 +55,10 @@ type CalendarViewItem = {
   type: "class" | "event" | "holiday";
   title: string;
   description?: string;
+  time?: string;
+  location?: string;
+  source?: "activity" | "event" | "system";
+  category?: string;
 };
 
 type ClassData = {
@@ -202,9 +210,6 @@ export default function Dashboard() {
       }
 
       try {
-        await seedClassData();
-        await seedUserData(user.uid);
-
         const snap = await getDoc(doc(db, "classCA1B", "data"));
 
         if (snap.exists()) {
@@ -287,24 +292,48 @@ export default function Dashboard() {
 
     const items: CalendarViewItem[] = [];
     const isWeekend = date.getUTCDay() === 0 || date.getUTCDay() === 6;
+    const holiday = PH_HOLIDAYS_2026[dateStr];
+
+    if (holiday) {
+      items.push({
+        date: dateStr,
+        type: "holiday",
+        title: holiday,
+        description: "Philippine Holiday",
+        source: "system"
+      });
+    }
 
     if (isWeekend) {
       items.push({
         date: dateStr,
         type: "holiday",
         title: "Weekend",
-        description: "No classes scheduled"
+        description: "No classes scheduled",
+        source: "system"
+      });
+    } else {
+      items.push({
+        date: dateStr,
+        type: "class",
+        title: "Regular Class Day",
+        description: "Normal school day",
+        source: "system"
       });
     }
 
-    if (PH_HOLIDAYS_2026[dateStr]) {
-      items.push({
-        date: dateStr,
-        type: "holiday",
-        title: PH_HOLIDAYS_2026[dateStr],
-        description: "Philippine Holiday"
+    activities
+      .filter((activity) => activity.deadline === dateStr)
+      .forEach((activity) => {
+        items.push({
+          date: activity.deadline,
+          type: "event",
+          title: activity.title,
+          description: activity.details,
+          source: "activity",
+          category: activity.type
+        });
       });
-    }
 
     events
       .filter((event) => event.date === dateStr)
@@ -313,18 +342,13 @@ export default function Dashboard() {
           date: event.date,
           type: "event",
           title: event.title,
-          description: event.description
+          description: event.description || event.details,
+          time: event.time,
+          location: event.location,
+          source: "event",
+          category: event.type
         });
       });
-
-    if (items.length === 0) {
-      items.push({
-        date: dateStr,
-        type: "class",
-        title: "Regular Class Day",
-        description: "Normal school day"
-      });
-    }
 
     return { date, weekdayShort, items };
   };
@@ -501,11 +525,16 @@ export default function Dashboard() {
                 selectedDay.map((item, index) => (
                   <div
                     key={`${item.date}-${item.title}-${index}`}
-                    className={`cal-card ${item.type}`}
+                    className={`cal-card ${item.type} ${item.source || ""} ${item.category || ""}`}
                   >
                     <b>{item.title}</b>
                     <p>{item.description}</p>
-                    <span>{item.type}</span>
+                    {(item.time || item.location) && (
+                      <small className="cal-time-detail">
+                        {item.time || "Any time"} {item.location ? `• ${item.location}` : ""}
+                      </small>
+                    )}
+                    <span>{item.source || item.type}</span>
                   </div>
                 ))
               )}

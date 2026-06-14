@@ -7,7 +7,13 @@ import "./styles/global.css";
 import { registerSW } from 'virtual:pwa-register';
 import { AuthProvider } from './context/AuthContext';
 
-registerSW();
+// Automatically update the service worker when new content is detected
+registerSW({ 
+  immediate: true,
+  onRegistered() {
+    console.log('CA1B Connect PWA: Service Worker Registered');
+  }
+});
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

@@ -1,4 +1,4 @@
-// src/services/attendanceService.ts
+// d:\ca1b\src\services\attendanceService.ts
 
 import {
   collection,
@@ -10,7 +10,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
-  updateDoc,
+  runTransaction,
   where
 } from "firebase/firestore";
 
@@ -66,16 +66,8 @@ export function buildAttendanceSummary(
 }
 
 export async function getSavedAttendanceDates() {
-  const attendanceQuery = query(
-    collection(db, ATTENDANCE_COLLECTION),
-    orderBy("date", "desc")
-  );
-
-  const snap = await getDocs(attendanceQuery);
-
-  return snap.docs
-    .map((attendanceDoc) => attendanceDoc.data().date as string)
-    .filter(Boolean);
+  const snap = await getDocs(query(collection(db, ATTENDANCE_COLLECTION), orderBy("date", "desc")));
+  return snap.docs.map(doc => doc.id);
 }
 
 export async function getAttendanceDay(date: string) {
@@ -109,13 +101,7 @@ export async function getActiveClassStudents() {
 
   return snap.docs
     .map((studentDoc) => studentDoc.data() as UserProfile)
-    .sort((a, b) => {
-      const numberA = Number(a.number || 9999);
-      const numberB = Number(b.number || 9999);
-
-      if (numberA !== numberB) return numberA - numberB;
-      return a.name.localeCompare(b.name);
-    });
+    .sort((a, b) => (Number(a.number) || 999) - (Number(b.number) || 999) || a.name.localeCompare(b.name));
 }
 
 export async function createAttendanceDay(date: string, creatorUid: string) {
@@ -166,34 +152,33 @@ export async function updateAttendanceRecord(
     updatedBy: string;
   }
 ) {
-  const attendance = await getAttendanceDay(date);
+  const docRef = getAttendanceRef(date);
 
-  if (!attendance) {
-    throw new Error("Attendance day does not exist.");
-  }
+  await runTransaction(db, async (transaction) => {
+    const snap = await transaction.get(docRef);
+    if (!snap.exists()) throw new Error("Attendance day does not exist.");
 
-  const currentRecord = attendance.records[studentUid];
+    const attendance = snap.data() as AttendanceDay;
+    const currentRecord = attendance.records[studentUid];
+    if (!currentRecord) throw new Error("Student record does not exist.");
 
-  if (!currentRecord) {
-    throw new Error("Student record does not exist for this attendance day.");
-  }
+    const nextRecords: Record<string, AttendanceRecord> = {
+      ...attendance.records,
+      [studentUid]: {
+        ...currentRecord,
+        status: data.status,
+        note: data.status === "excused" ? data.note || "" : "",
+        updatedAt: new Date(),
+        updatedBy: data.updatedBy
+      }
+    };
 
-  const nextRecords: Record<string, AttendanceRecord> = {
-    ...attendance.records,
-    [studentUid]: {
-      ...currentRecord,
-      status: data.status,
-      note: data.status === "excused" ? data.note || "" : "",
+    transaction.update(docRef, {
+      records: nextRecords,
+      summary: buildAttendanceSummary(nextRecords),
       updatedAt: serverTimestamp(),
       updatedBy: data.updatedBy
-    }
-  };
-
-  await updateDoc(getAttendanceRef(date), {
-    records: nextRecords,
-    summary: buildAttendanceSummary(nextRecords),
-    updatedAt: serverTimestamp(),
-    updatedBy: data.updatedBy
+    });
   });
 }
 
