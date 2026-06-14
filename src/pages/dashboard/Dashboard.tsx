@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { collection, doc, getDoc, getDocs } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { Link } from "react-router-dom";
 
 import { useAuth } from "../../hooks/useAuth";
@@ -82,8 +82,6 @@ const MONTHS = [
   { label: "March 2027", month: 2, year: 2027 },
   { label: "April 2027", month: 3, year: 2027 }
 ];
-
-const EVENTS_COLLECTION = "classCA1B_Events";
 
 const WEEKDAYS: WeekDay[] = [
   "Sunday",
