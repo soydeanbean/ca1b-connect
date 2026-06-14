@@ -1,0 +1,396 @@
+/* src/pages/announcements/Announcements.css */
+
+.announcements-page {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.announcements-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.announcements-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.announcements-header p {
+  color: var(--muted, rgba(23, 23, 23, 0.62));
+  font-size: 0.95rem;
+  margin-top: 0.25rem;
+}
+
+.announcements-create-btn {
+  padding: 0.75rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius, 14px);
+  background: linear-gradient(135deg, #ff8c00, #ffd000);
+  color: #0f0f0f;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  white-space: nowrap;
+}
+
+.announcements-create-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(255, 140, 0, 0.3);
+}
+
+/* ─── FILTERS ─── */
+.announcements-filters {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.announcements-filters button {
+  padding: 0.5rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border: 1px solid var(--border, rgba(23, 23, 23, 0.1));
+  border-radius: 50px;
+  background: transparent;
+  color: var(--text, #171717);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.announcements-filters button.active {
+  background: var(--primary, #ff8c00);
+  color: white;
+  border-color: var(--primary, #ff8c00);
+}
+
+.announcements-filters button:hover:not(.active) {
+  background: var(--button-bg, rgba(23, 23, 23, 0.045));
+}
+
+/* ─── GRID ─── */
+.announcements-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.25rem;
+}
+
+@media (max-width: 768px) {
+  .announcements-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ─── CARD ─── */
+.announcement-card {
+  background: var(--surface, #f7f7f8);
+  border-radius: var(--radius, 14px);
+  padding: 1.5rem;
+  border: 1px solid var(--border, rgba(23, 23, 23, 0.1));
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.announcement-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--soft-shadow, 0 12px 34px rgba(17, 17, 17, 0.06));
+}
+
+.announcement-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  gap: 0.75rem;
+}
+
+.announcement-card-category {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.25rem 0.75rem;
+  border-radius: 50px;
+}
+
+.announcement-card-category.major {
+  background: rgba(255, 140, 0, 0.15);
+  color: #ff8c00;
+}
+
+.announcement-card-category.minor {
+  background: rgba(100, 100, 255, 0.12);
+  color: #6666ff;
+}
+
+.announcement-card h2 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  line-height: 1.4;
+}
+
+.announcement-card-content {
+  color: var(--muted, rgba(23, 23, 23, 0.72));
+  font-size: 0.92rem;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+  white-space: pre-wrap;
+}
+
+.announcement-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border, rgba(23, 23, 23, 0.08));
+}
+
+.announcement-card-creator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.announcement-card-creator:hover {
+  opacity: 0.8;
+}
+
+.announcement-card-creator img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--button-bg, rgba(23, 23, 23, 0.045));
+}
+
+.announcement-card-creator-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.announcement-card-creator-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.announcement-card-creator-role {
+  font-size: 0.75rem;
+  color: var(--muted, rgba(23, 23, 23, 0.62));
+}
+
+.announcement-card-time {
+  font-size: 0.78rem;
+  color: var(--muted, rgba(23, 23, 23, 0.5));
+}
+
+/* ─── FORM ─── */
+.announcement-form-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.announcement-form {
+  background: var(--surface-raised, #ffffff);
+  border-radius: var(--radius, 14px);
+  padding: 2rem;
+  width: 100%;
+  max-width: 540px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.announcement-form h2 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+}
+
+.announcement-form label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+.announcement-form label span {
+  display: block;
+  margin-bottom: 0.35rem;
+}
+
+.announcement-form input,
+.announcement-form textarea,
+.announcement-form select {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.95rem;
+  border: 1px solid var(--border, rgba(23, 23, 23, 0.15));
+  border-radius: 10px;
+  background: var(--bg, #ffffff);
+  color: var(--text, #171717);
+  transition: border-color 0.2s ease;
+}
+
+.announcement-form input:focus,
+.announcement-form textarea:focus,
+.announcement-form select:focus {
+  outline: none;
+  border-color: var(--primary, #ff8c00);
+}
+
+.announcement-form textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.announcement-form-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  justify-content: flex-end;
+}
+
+.announcement-form-actions button {
+  padding: 0.7rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.announcement-form-actions .btn-cancel {
+  background: var(--button-bg, rgba(23, 23, 23, 0.045));
+  color: var(--text, #171717);
+}
+
+.announcement-form-actions .btn-submit {
+  background: linear-gradient(135deg, #ff8c00, #ffd000);
+  color: #0f0f0f;
+}
+
+.announcement-form-actions .btn-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* ─── PROFILE MODAL ─── */
+.profile-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.profile-modal {
+  background: var(--surface-raised, #ffffff);
+  border-radius: var(--radius, 14px);
+  padding: 2rem;
+  width: 100%;
+  max-width: 380px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+.profile-modal img {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-bottom: 1rem;
+  background: var(--button-bg, rgba(23, 23, 23, 0.045));
+}
+
+.profile-modal h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.profile-modal .profile-modal-role {
+  font-size: 0.9rem;
+  color: var(--muted, rgba(23, 23, 23, 0.62));
+  text-transform: capitalize;
+  margin-bottom: 0.25rem;
+}
+
+.profile-modal .profile-modal-email {
+  font-size: 0.85rem;
+  color: var(--muted, rgba(23, 23, 23, 0.5));
+  margin-bottom: 1.5rem;
+}
+
+.profile-modal button {
+  padding: 0.6rem 1.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  background: var(--button-bg, rgba(23, 23, 23, 0.045));
+  color: var(--text, #171717);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.profile-modal button:hover {
+  background: var(--primary, #ff8c00);
+  color: white;
+}
+
+/* ─── EMPTY ─── */
+.announcements-empty {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--muted, rgba(23, 23, 23, 0.62));
+}
+
+.announcements-empty h3 {
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+}
+
+/* ─── MESSAGE ─── */
+.announcements-message {
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+  background: rgba(255, 140, 0, 0.1);
+  color: #ff8c00;
+  text-align: center;
+}
+
+/* ─── DARK ─── */
+.dark .announcement-card {
+  background: var(--surface, #17191f);
+  border-color: var(--border, rgba(255, 255, 255, 0.09));
+}
+
+.dark .announcement-form {
+  background: var(--surface, #17191f);
+}
+
+.dark .profile-modal {
+  background: var(--surface, #17191f);
+}

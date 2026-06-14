@@ -14,10 +14,14 @@ import Profile from "./pages/profile/Profile";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
 
+import Landing from "./pages/landing/Landing";
+import Announcements from "./pages/announcements/Announcements";
+
 import ProtectedRoute from "./routes/ProtectedRoute";
 import PublicRoute from "./routes/PublicRoute";
 
 import { useAuth } from "./hooks/useAuth";
+import { NotificationProvider } from "./context/NotificationContext";
 
 function AppRoutes() {
   const { loading } = useAuth();
@@ -41,6 +45,9 @@ function AppRoutes() {
 
   return (
     <Routes>
+      {/* PUBLIC LANDING PAGE */}
+      <Route path="/" element={<Landing />} />
+
       <Route
         path="/login"
         element={
@@ -63,21 +70,23 @@ function AppRoutes() {
         path="/*"
         element={
           <ProtectedRoute>
-            <div className="app-shell">
-              <Navbar />
+            <NotificationProvider>
+              <div className="app-shell">
+                <Navbar />
 
-              <main className="app-content">
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/attendance" element={<Attendance />} />
-                  <Route path="/activities" element={<Activities />} />
-                  <Route path="/students" element={<Students />} />
-                  <Route path="/calendar" element={<CalendarPage />} />
-                  <Route path="/profile" element={<Profile />} />
-                </Routes>
-              </main>
-            </div>
+                <main className="app-content">
+                  <Routes>
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/attendance" element={<Attendance />} />
+                    <Route path="/activities" element={<Activities />} />
+                    <Route path="/students" element={<Students />} />
+                    <Route path="/calendar" element={<CalendarPage />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/announcements" element={<Announcements />} />
+                  </Routes>
+                </main>
+              </div>
+            </NotificationProvider>
           </ProtectedRoute>
         }
       />

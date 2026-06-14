@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
+import { useNotifications } from "../../hooks/useNotifications";
 import { logoutUser } from "../../services/authService";
 import { searchGlobal, type GlobalSearchResult } from "../../services/searchService";
 import "./Navbar.css";
@@ -11,9 +12,11 @@ import defaultProfile from "../../assets/logos/ca1b.png";
 export default function Navbar() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { notifications, unreadCount, markAllRead, majorNotifications, minorNotifications } = useNotifications();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -21,6 +24,7 @@ export default function Navbar() {
   const [searchOpen, setSearchOpen] = useState(false);
 
   const profileRef = useRef<HTMLDivElement>(null);
+  const notifRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -53,7 +57,7 @@ export default function Navbar() {
     return () => window.clearTimeout(timeout);
   }, [searchQuery]);
 
-  // ❌ CLOSE PROFILE ON OUTSIDE CLICK
+  // ❌ CLOSE ON OUTSIDE CLICK
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -61,6 +65,13 @@ export default function Navbar() {
         !profileRef.current.contains(event.target as Node)
       ) {
         setProfileOpen(false);
+      }
+
+      if (
+        notifRef.current &&
+        !notifRef.current.contains(event.target as Node)
+      ) {
+        setNotifOpen(false);
       }
 
       if (
@@ -104,6 +115,19 @@ export default function Navbar() {
     setSearchResults([]);
     setSearchOpen(false);
     navigate(result.path);
+  };
+
+  const handleNotificationClick = (link: string) => {
+    setNotifOpen(false);
+    navigate(link);
+  };
+
+  const notificationIcon = (type: string) => {
+    switch (type) {
+      case "announcement": return "📢";
+      case "task_reminder": return "⏰";
+      default: return "🔔";
+    }
   };
 
   return (
@@ -153,9 +177,10 @@ export default function Navbar() {
 
           {/* NAV */}
           <nav className={`nav-links ${menuOpen ? "active" : ""}`}>
-            <Link to="/">Dashboard</Link>
+            <Link to="/dashboard">Dashboard</Link>
             <Link to="/attendance">Attendance</Link>
             <Link to="/activities">Activities</Link>
+            <Link to="/announcements">Announcements</Link>
             <Link to="/students">Students</Link>
             <Link to="/calendar">Calendar</Link>
           </nav>
@@ -170,6 +195,83 @@ export default function Navbar() {
             >
               {darkMode ? "☀️" : "🌙"}
             </button>
+
+            {/* NOTIFICATIONS */}
+            <div className="notification-wrapper" ref={notifRef}>
+              <button
+                className="notification-bell"
+                onClick={() => setNotifOpen(!notifOpen)}
+                title="Notifications"
+              >
+                🔔
+                {unreadCount > 0 && (
+                  <span className="notification-badge">
+                    {unreadCount > 99 ? "99+" : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              <div
+                className={`notification-dropdown ${notifOpen ? "show" : ""}`}
+              >
+                <div className="notification-dropdown-header">
+                  <h4>Notifications</h4>
+                  {unreadCount > 0 && (
+                    <button onClick={markAllRead}>Mark all read</button>
+                  )}
+                </div>
+
+                <div className="notification-dropdown-list">
+                  {notifications.length === 0 ? (
+                    <div className="notification-empty">No notifications yet</div>
+                  ) : (
+                    <>
+                      {majorNotifications.length > 0 && (
+                        <>
+                          {majorNotifications.slice(0, 5).map((n) => (
+                            <div
+                              key={n.id}
+                              className={`notification-item ${n.isRead ? "" : "unread"}`}
+                              onClick={() => handleNotificationClick(n.link)}
+                            >
+                              <span className="notification-item-icon">
+                                {notificationIcon(n.type)}
+                              </span>
+                              <div className="notification-item-content">
+                                <div className="notification-item-title">{n.title}</div>
+                                <div className="notification-item-message">{n.message}</div>
+                                <span className="notification-item-category major">Major</span>
+                              </div>
+                            </div>
+                          ))}
+                        </>
+                      )}
+
+                      {minorNotifications.length > 0 && (
+                        <>
+                          {minorNotifications.slice(0, 3).map((n) => (
+                            <div
+                              key={n.id}
+                              className={`notification-item ${n.isRead ? "" : "unread"}`}
+                              onClick={() => handleNotificationClick(n.link)}
+                            >
+                              <span className="notification-item-icon">
+                                {notificationIcon(n.type)}
+                              </span>
+                              <div className="notification-item-content">
+                                <div className="notification-item-title">{n.title}</div>
+                                <div className="notification-item-message">{n.message}</div>
+                                <span className="notification-item-category minor">Minor</span>
+                              </div>
+                            </div>
+                          ))}
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
 
             {/* PROFILE */}
             <div className="profile-wrapper" ref={profileRef}>
