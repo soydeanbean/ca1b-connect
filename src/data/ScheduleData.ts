@@ -1,6 +1,17 @@
 // src/data/ScheduleData.ts
 import type { DayOfWeek } from "../types/Subject";
 
+import HomeroomBg from "../assets/backgrounds/HomeroomBackground.png";
+import CommunicationsBg from "../assets/backgrounds/CommunicationsBackground.png";
+import KomunikasyonBg from "../assets/backgrounds/KomunikasyonBackground.png";
+import CareerBg from "../assets/backgrounds/CareerBackground.png";
+import HistoryBg from "../assets/backgrounds/HistoryBackground.png";
+import MathematicsBg from "../assets/backgrounds/MathematicsBackground.png";
+import ScienceBg from "../assets/backgrounds/ScienceBackground.png";
+import CTEBg from "../assets/backgrounds/CTEBackground.png";
+import FaithBg from "../assets/backgrounds/FaithBackground.png";
+import ReadingBg from "../assets/backgrounds/ReadingBackground.png";
+
 export interface ScheduleEntry {
   time: string;
   subjectCode: string;
@@ -56,16 +67,16 @@ const SCHEDULE: Record<DayOfWeek, ScheduleEntry[]> = {
 };
 
 export const SUBJECTS = [
-  { code: "HRGP001", name: "Homeroom Guidance Program I", room: "HB322", backgroundImage: "/src/assets/backgrounds/HomeroomBackground.png" },
-  { code: "CORS001", name: "Effective Communication", room: "HB311", backgroundImage: "/src/assets/backgrounds/CommunicationsBackground.png" },
-  { code: "CORS002", name: "Mabisang Komunikasyon", room: "HB311", backgroundImage: "/src/assets/backgrounds/KomunikasyonBackground.png" },
-  { code: "CORS003", name: "Life and Career Skills", room: "HB311", backgroundImage: "/src/assets/backgrounds/CareerBackground.png" },
-  { code: "CORS004", name: "Pag-aaral ng Kasaysayan at Lipunang Pilipino (PKLP)", room: "HB311", backgroundImage: "/src/assets/backgrounds/HistoryBackground.png" },
-  { code: "CORS005", name: "General Mathematics", room: "HB311", backgroundImage: "/src/assets/backgrounds/MathematicsBackground.png" },
-  { code: "CORS006", name: "General Science", room: "HB311", backgroundImage: "/src/assets/backgrounds/ScienceBackground.png" },
-  { code: "CTES004", name: "Computer Systems Servicing", room: "D416 / CSLAB3", backgroundImage: "/src/assets/backgrounds/CTEBackground.png" },
-  { code: "FLPS001", name: "Introduction to Christian Faith: Foundations in a Plural and AI-Driven World", room: "HB311", backgroundImage: "/src/assets/backgrounds/FaithBackground.png" },
-  { code: "SRPS001", name: "SHS Reading Program I", room: "D214", backgroundImage: "/src/assets/backgrounds/ReadingBackground.png" }
+  { code: "HRGP001", name: "Homeroom Guidance Program I", room: "HB322", backgroundImage: HomeroomBg },
+  { code: "CORS001", name: "Effective Communication", room: "HB311", backgroundImage: CommunicationsBg },
+  { code: "CORS002", name: "Mabisang Komunikasyon", room: "HB311", backgroundImage: KomunikasyonBg },
+  { code: "CORS003", name: "Life and Career Skills", room: "HB311", backgroundImage: CareerBg },
+  { code: "CORS004", name: "Pag-aaral ng Kasaysayan at Lipunang Pilipino (PKLP)", room: "HB311", backgroundImage: HistoryBg },
+  { code: "CORS005", name: "General Mathematics", room: "HB311", backgroundImage: MathematicsBg },
+  { code: "CORS006", name: "General Science", room: "HB311", backgroundImage: ScienceBg },
+  { code: "CTES004", name: "Computer Systems Servicing", room: "D416 / CSLAB3", backgroundImage: CTEBg },
+  { code: "FLPS001", name: "Introduction to Christian Faith: Foundations in a Plural and AI-Driven World", room: "HB311", backgroundImage: FaithBg },
+  { code: "SRPS001", name: "SHS Reading Program I", room: "D214", backgroundImage: ReadingBg }
 ];
 
 export function getTodaySchedule(): ScheduleEntry[] {
