@@ -5,11 +5,11 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Navbar from "./components/common/Navbar";
 
 import Dashboard from "./pages/dashboard/Dashboard";
-import Attendance from "./pages/attendance/Attendance";
-import Activities from "./pages/activities/Activities";
+import Subjects from "./pages/subjects/Subjects";
 import Students from "./pages/students/Students";
 import CalendarPage from "./pages/calendar/CalendarPage";
 import Profile from "./pages/profile/Profile";
+import QRAttendance from "./pages/qr/QRAttendance";
 
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
@@ -66,6 +66,16 @@ function AppRoutes() {
         }
       />
 
+      {/* QR Attendance - special endpoint, no nav */}
+      <Route
+        path="/qr-attendance"
+        element={
+          <ProtectedRoute>
+            <QRAttendance />
+          </ProtectedRoute>
+        }
+      />
+
       <Route
         path="/*"
         element={
@@ -77,8 +87,7 @@ function AppRoutes() {
                 <main className="app-content">
                   <Routes>
                     <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/attendance" element={<Attendance />} />
-                    <Route path="/activities" element={<Activities />} />
+                    <Route path="/subjects" element={<Subjects />} />
                     <Route path="/students" element={<Students />} />
                     <Route path="/calendar" element={<CalendarPage />} />
                     <Route path="/profile" element={<Profile />} />
@@ -90,6 +99,10 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+
+      {/* Legacy redirects */}
+      <Route path="/attendance" element={<ProtectedRoute><NotificationProvider><Subjects /></NotificationProvider></ProtectedRoute>} />
+      <Route path="/activities" element={<ProtectedRoute><NotificationProvider><Subjects /></NotificationProvider></ProtectedRoute>} />
     </Routes>
   );
 }

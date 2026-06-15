@@ -12,6 +12,7 @@ import type { ClassActivity } from "../types/Activity";
 import type { PersonalTask } from "../types/PersonalTask";
 
 const ACTIVITY_COLLECTION = "classCA1B_Activities";
+const READ_STATE_KEY = "ca1b_read_notifications";
 
 export interface NotificationContextValue {
   notifications: AppNotification[];
@@ -49,7 +50,7 @@ function activityToNotification(a: ClassActivity): AppNotification {
     category: "major",
     title: `New Activity: ${a.title}`,
     message: `Deadline: ${a.deadline}`,
-    link: `/activities?activity=${a.id}`,
+    link: `/subjects`,
     isRead: false,
     createdAt: a.createdAt
   };
@@ -60,7 +61,6 @@ function taskToNotification(t: PersonalTask): AppNotification | null {
     const today = new Date();
     const dueDate = new Date(t.date + "T23:59:59");
 
-    // Only show notifications for overdue or same-day tasks
     const isOverdue = dueDate < today;
     const isToday = dueDate.toDateString() === today.toDateString();
 
@@ -71,7 +71,7 @@ function taskToNotification(t: PersonalTask): AppNotification | null {
         category: "minor",
         title: isOverdue ? "Overdue Task" : "Task Due Today",
         message: `"${t.title}" is ${isOverdue ? "overdue" : "due today"}`,
-        link: "/activities",
+        link: "/subjects",
         isRead: false,
         createdAt: Timestamp.fromDate(today)
       };
@@ -80,10 +80,31 @@ function taskToNotification(t: PersonalTask): AppNotification | null {
   return null;
 }
 
+function loadReadIds(): Set<string> {
+  try {
+    const stored = localStorage.getItem(READ_STATE_KEY);
+    if (stored) {
+      return new Set(JSON.parse(stored));
+    }
+  } catch {}
+  return new Set();
+}
+
+function saveReadIds(ids: Set<string>) {
+  try {
+    localStorage.setItem(READ_STATE_KEY, JSON.stringify([...ids]));
+  } catch {}
+}
+
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [readIds, setReadIds] = useState<Set<string>>(new Set());
+  const [readIds, setReadIds] = useState<Set<string>>(loadReadIds);
+
+  // Persist read state whenever it changes
+  useEffect(() => {
+    saveReadIds(readIds);
+  }, [readIds]);
 
   // Listen for announcements
   useEffect(() => {
@@ -159,13 +180,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     };
 
     checkTasks();
-    const interval = setInterval(checkTasks, 60000); // Check every minute
+    const interval = setInterval(checkTasks, 60000);
     return () => clearInterval(interval);
   }, [user]);
 
   const markAllRead = useCallback(() => {
     const allIds = new Set(notifications.map((n) => n.id));
     setReadIds(allIds);
+    saveReadIds(allIds);
   }, [notifications]);
 
   const notificationsWithReadStatus = notifications.map((n) => ({
@@ -173,6 +195,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     isRead: readIds.has(n.id)
   }));
 
+  // Calculate unread count based on persisted read state
   const unreadCount = notificationsWithReadStatus.filter((n) => !n.isRead).length;
 
   const majorNotifications = notificationsWithReadStatus.filter((n) => n.category === "major");

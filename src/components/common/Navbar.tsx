@@ -178,8 +178,7 @@ export default function Navbar() {
           {/* NAV */}
           <nav className={`nav-links ${menuOpen ? "active" : ""}`}>
             <Link to="/dashboard">Dashboard</Link>
-            <Link to="/attendance">Attendance</Link>
-            <Link to="/activities">Activities</Link>
+            <Link to="/subjects">Subjects</Link>
             <Link to="/announcements">Announcements</Link>
             <Link to="/students">Students</Link>
             <Link to="/calendar">Calendar</Link>
@@ -292,7 +291,7 @@ export default function Navbar() {
               >
                 <Link to="/profile">👤 Profile</Link>
                 <Link to="/dashboard">📊 My Dashboard</Link>
-                <Link to="/settings">⚙️ Settings</Link>
+                <Link to="/subjects">📚 Subjects</Link>
 
                 <hr />
 

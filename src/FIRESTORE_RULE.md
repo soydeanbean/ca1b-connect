@@ -1,4 +1,5 @@
-//Firestore Database rule
+//Firestore Database rule - CA1B Connect v2.0
+//Includes new subject-based attendance and activities system
 
 rules_version = '2';
 
@@ -31,6 +32,18 @@ service cloud.firestore {
 
     function myProfile() {
       return get(/databases/$(database)/documents/classCA1B_Profiles/$(request.auth.uid));
+    }
+
+    function isStudent() {
+      return signedIn() && hasProfile() && myProfile().data.role == "student";
+    }
+
+    function isTeacher() {
+      return signedIn() && hasProfile() && myProfile().data.role == "teacher";
+    }
+
+    function isOfficerWithRole(roles) {
+      return signedIn() && hasProfile() && myProfile().data.officerRole in roles;
     }
 
     function canManageAttendance() {
@@ -338,6 +351,166 @@ service cloud.firestore {
         ]);
     }
 
+    // ─── NEW: Subject Attendance Session Functions ───
+
+    function validSessionShape(sessionId) {
+      return request.resource.data.id == sessionId
+        && request.resource.data.subjectCode is string
+        && request.resource.data.date is string
+        && request.resource.data.status in ["active", "completed"]
+        && request.resource.data.records is map
+        && request.resource.data.summary is map
+        && request.resource.data.createdBy is string
+        && request.resource.data.keys().hasOnly([
+          "id",
+          "subjectCode",
+          "date",
+          "status",
+          "records",
+          "summary",
+          "createdAt",
+          "createdBy"
+        ]);
+    }
+
+    function validSessionCreate(sessionId) {
+      return validSessionShape(sessionId)
+        && request.resource.data.createdBy == request.auth.uid;
+    }
+
+    function validSessionUpdate() {
+      return canManageAttendance()
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.subjectCode == resource.data.subjectCode
+        && request.resource.data.date == resource.data.date
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.keys().hasOnly([
+          "id",
+          "subjectCode",
+          "date",
+          "status",
+          "records",
+          "summary",
+          "createdAt",
+          "createdBy"
+        ]);
+    }
+
+    // QR scan: student can only update their own record to "late"
+    function validQRLateScan() {
+      return signedIn()
+        && hasProfile()
+        && isStudent()
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.subjectCode == resource.data.subjectCode
+        && request.resource.data.date == resource.data.date
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.summary == resource.data.summary
+        && request.resource.data.records[request.auth.uid].status == "late"
+        && (
+          resource.data.records[request.auth.uid].status == "present"
+          || resource.data.records[request.auth.uid].status == "absent"
+          || resource.data.records[request.auth.uid].status == "excused"
+        )
+        && request.resource.data.records[request.auth.uid].scannedAt != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "records"
+        ]);
+    }
+
+    // ─── NEW: Subject Activity Functions ───
+
+    function validSubjectActivityType() {
+      return request.resource.data.type in [
+        "assignment",
+        "project",
+        "activity",
+        "quiz"
+      ];
+    }
+
+    function validSubjectActivityShape(activityId) {
+      return request.resource.data.id == activityId
+        && request.resource.data.subjectCode is string
+        && request.resource.data.title is string
+        && request.resource.data.description is string
+        && request.resource.data.type is string
+        && validSubjectActivityType()
+        && request.resource.data.dueDate is string
+        && request.resource.data.dueTime is string
+        && request.resource.data.completedBy is map
+        && request.resource.data.createdBy is string
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.keys().hasOnly([
+          "id",
+          "subjectCode",
+          "title",
+          "description",
+          "type",
+          "dueDate",
+          "dueTime",
+          "link",
+          "completedBy",
+          "createdAt",
+          "createdBy",
+          "updatedAt",
+          "updatedBy"
+        ]);
+    }
+
+    function validSubjectActivityCreate(activityId) {
+      return validSubjectActivityShape(activityId)
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.completedBy == {};
+    }
+
+    function validSubjectActivityUpdate(activityId) {
+      return validSubjectActivityShape(activityId)
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    function validSubjectActivityCompletion() {
+      return signedIn()
+        && hasProfile()
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.subjectCode == resource.data.subjectCode
+        && request.resource.data.title == resource.data.title
+        && request.resource.data.description == resource.data.description
+        && request.resource.data.type == resource.data.type
+        && request.resource.data.dueDate == resource.data.dueDate
+        && request.resource.data.dueTime == resource.data.dueTime
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.updatedBy == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "completedBy",
+          "updatedAt",
+          "updatedBy"
+        ])
+        && request.resource.data.completedBy.diff(resource.data.completedBy).affectedKeys().hasOnly([
+          request.auth.uid
+        ])
+        && (
+          !request.resource.data.completedBy.keys().hasAny([request.auth.uid])
+          || (
+            request.resource.data.completedBy[request.auth.uid].keys().hasOnly([
+              "uid",
+              "name",
+              "email",
+              "completedAt"
+            ])
+            && request.resource.data.completedBy[request.auth.uid].uid == request.auth.uid
+            && request.resource.data.completedBy[request.auth.uid].email == myProfile().data.email
+            && request.resource.data.completedBy[request.auth.uid].name == myProfile().data.name
+          )
+        );
+    }
+
+    // ─── COLLECTION RULES ───
+
     match /classCA1B_Profiles/{uid} {
       allow create: if isOwner(uid)
         && request.resource.data.uid == request.auth.uid
@@ -448,7 +621,6 @@ service cloud.firestore {
       allow delete: if canManageEvents();
     }
 
-    // NEW: Announcements collection
     match /classCA1B_Announcements/{announcementId} {
       allow read: if signedIn();
 
@@ -462,7 +634,6 @@ service cloud.firestore {
       allow delete: if canCreateAnnouncements();
     }
 
-    // NEW: Personal Tasks collection (private per user, GBOX only)
     match /classCA1B_UserTasks/{taskId} {
       allow read: if signedIn()
         && request.auth.uid == resource.data.uid;
@@ -478,6 +649,35 @@ service cloud.firestore {
 
       allow delete: if canCreatePersonalTasks()
         && request.auth.uid == resource.data.uid;
+    }
+
+    // ─── NEW: Subject Attendance Sessions ───
+    match /subject_attendance_sessions/{sessionId} {
+      allow read: if signedIn() && hasProfile();
+
+      allow create: if canManageAttendance()
+        && validSessionCreate(sessionId);
+
+      // Managers can update normally; students can only QR-scan late
+      allow update: if validSessionUpdate()
+        || validQRLateScan();
+
+      allow delete: if canManageAttendance();
+    }
+
+    // ─── NEW: Subject Activities ───
+    match /subject_activities/{activityId} {
+      allow read: if signedIn() && hasProfile();
+
+      allow create: if canManageActivities()
+        && validSubjectActivityCreate(activityId);
+
+      allow update: if (
+        canManageActivities()
+        && validSubjectActivityUpdate(activityId)
+      ) || validSubjectActivityCompletion();
+
+      allow delete: if canManageActivities();
     }
   }
 }
