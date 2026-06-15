@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
 import { Link } from "react-router-dom";
 
 import { useAuth } from "../../hooks/useAuth";
-import { db } from "../../lib/firebase";
 
 import type { Officer } from "../../data/Officers";
 import { officers } from "../../data/Officers";
 import { PH_HOLIDAYS_2026 } from "../../data/Holidays";
+import { getAllSchedules } from "../../data/ScheduleData";
+import { SUBJECTS } from "../../data/ScheduleData";
 
 import ScheduleModal from "../../components/common/ScheduleModal";
 
@@ -15,9 +15,11 @@ import { CLASS_STUDENT_COUNT } from "../../services/seedClassData";
 import { exportToGoogleCalendar } from "../../services/calendarService";
 import { getStudentAttendanceOverview } from "../../services/attendanceService";
 import { getActivities, getActivityStats, splitActivitiesForStudent } from "../../services/activityService";
+import { getSubjectActivities } from "../../services/subjectService";
 
 import type { PersonalAttendanceOverview } from "../../types/Attendance";
 import type { ActivityStats, ClassActivity } from "../../types/Activity";
+import type { SubjectActivity } from "../../types/Subject";
 
 import "./Dashboard.css";
 
@@ -39,17 +41,6 @@ type ScheduleItem = {
   room: string;
 };
 
-type CalendarEvent = {
-  id?: string;
-  date: string;
-  title: string;
-  description?: string;
-  details?: string;
-  time?: string;
-  location?: string;
-  type?: string;
-};
-
 type CalendarViewItem = {
   date: string;
   type: "class" | "event" | "holiday";
@@ -57,16 +48,9 @@ type CalendarViewItem = {
   description?: string;
   time?: string;
   location?: string;
-  source?: "activity" | "event" | "system";
+  source?: "activity" | "subject_activity" | "event" | "system";
   category?: string;
-};
-
-type ClassData = {
-  schedule?: ScheduleItem[];
-  events?: CalendarEvent[];
-  students?: unknown[];
-  studentCount?: number;
-  studentsCount?: number;
+  subjectCode?: string;
 };
 
 const MONTHS = [
@@ -94,10 +78,15 @@ const WEEKDAYS: WeekDay[] = [
 ];
 
 function parseTimeRange(time: string) {
-  const [startRaw, endRaw] = time.split(" - ");
+  // ScheduleData uses en dash (–) or hyphen (-) separator
+  const separators = /[–\-]/;
+  const parts = time.split(separators).map(p => p.trim());
+  if (parts.length < 2) return { start: 0, end: 0 };
+  const [startRaw, endRaw] = parts;
 
   const parse = (value: string) => {
-    const [hourMin, meridian] = value.trim().split(" ");
+    const cleaned = value.trim();
+    const [hourMin, meridian] = cleaned.split(" ");
     const [parsedHours, minutes] = hourMin.split(":").map(Number);
     let hours = parsedHours;
 
@@ -148,23 +137,32 @@ function getScheduleStatus(item: ScheduleItem): ScheduleStatus {
   return "upcoming";
 }
 
-function getStudentCount(data: ClassData) {
-  if (Array.isArray(data.students)) return data.students.length;
-  if (typeof data.studentCount === "number") return data.studentCount;
-  if (typeof data.studentsCount === "number") return data.studentsCount;
-
-  return CLASS_STUDENT_COUNT;
+// Convert ScheduleData entry to Dashboard ScheduleItem
+function buildScheduleFromLocalData(): ScheduleItem[] {
+  const allSchedules = getAllSchedules();
+  const items: ScheduleItem[] = [];
+  for (const [day, entries] of Object.entries(allSchedules)) {
+    for (const entry of entries) {
+      if (entry.subjectCode === "ASSEMBLY" || entry.subjectCode === "EXAMEN") continue;
+      items.push({
+        day: day as WeekDay,
+        time: entry.time,
+        subject: entry.subjectName,
+        room: entry.room
+      });
+    }
+  }
+  return items;
 }
 
 export default function Dashboard() {
   const { user } = useAuth();
 
   const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [studentCount, setStudentCount] = useState(CLASS_STUDENT_COUNT);
   const [myAttendance, setMyAttendance] =
     useState<PersonalAttendanceOverview | null>(null);
   const [activities, setActivities] = useState<ClassActivity[]>([]);
+  const [subjectActivities, setSubjectActivities] = useState<SubjectActivity[]>([]);
   const [activityStats, setActivityStats] = useState<ActivityStats | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -202,6 +200,11 @@ export default function Dashboard() {
     [currentMonth]
   );
 
+  // Build schedule from local ScheduleData.ts instead of Firestore
+  useEffect(() => {
+    setSchedule(buildScheduleFromLocalData());
+  }, []);
+
   useEffect(() => {
     const init = async () => {
       if (!user) {
@@ -210,18 +213,6 @@ export default function Dashboard() {
       }
 
       try {
-        const snap = await getDoc(doc(db, "classCA1B", "data"));
-
-        if (snap.exists()) {
-          const data = snap.data() as ClassData;
-
-          setSchedule(data.schedule || []);
-          setEvents(data.events || []);
-          setStudentCount(getStudentCount(data));
-        } else {
-          setStudentCount(CLASS_STUDENT_COUNT);
-        }
-
         const [overview, loadedActivities] = await Promise.all([
           getStudentAttendanceOverview(user.uid),
           getActivities()
@@ -229,6 +220,13 @@ export default function Dashboard() {
         setMyAttendance(overview);
         setActivities(loadedActivities);
         setActivityStats(getActivityStats(loadedActivities, user.uid));
+
+        // Load subject-specific activities (from each subject)
+        const allSubjects = SUBJECTS.map(s => s.code).filter(c => c !== "ASSEMBLY" && c !== "EXAMEN");
+        const subjectActivityPromises = allSubjects.map(code => getSubjectActivities(code));
+        const subjectActivityResults = await Promise.all(subjectActivityPromises);
+        const allSubjectActivities = subjectActivityResults.flat();
+        setSubjectActivities(allSubjectActivities);
       } catch (error) {
         console.error("Dashboard load failed:", error);
       } finally {
@@ -294,17 +292,16 @@ export default function Dashboard() {
     const isWeekend = date.getUTCDay() === 0 || date.getUTCDay() === 6;
     const holiday = PH_HOLIDAYS_2026[dateStr];
 
+    // FIX: If holiday, ONLY show holiday, don't also show "Regular Class Day"
     if (holiday) {
       items.push({
         date: dateStr,
         type: "holiday",
         title: holiday,
-        description: "Philippine Holiday",
+        description: "Philippine Holiday - No classes",
         source: "system"
       });
-    }
-
-    if (isWeekend) {
+    } else if (isWeekend) {
       items.push({
         date: dateStr,
         type: "holiday",
@@ -322,6 +319,7 @@ export default function Dashboard() {
       });
     }
 
+    // Global activities (from Activities page)
     activities
       .filter((activity) => activity.deadline === dateStr)
       .forEach((activity) => {
@@ -335,18 +333,21 @@ export default function Dashboard() {
         });
       });
 
-    events
-      .filter((event) => event.date === dateStr)
-      .forEach((event) => {
+    // Subject-specific activities (from each subject page)
+    subjectActivities
+      .filter((sa) => sa.dueDate === dateStr)
+      .forEach((sa) => {
+        const subjectInfo = SUBJECTS.find(s => s.code === sa.subjectCode);
+        const subjectLabel = subjectInfo ? `[${subjectInfo.code}] ` : "";
         items.push({
-          date: event.date,
+          date: sa.dueDate,
           type: "event",
-          title: event.title,
-          description: event.description || event.details,
-          time: event.time,
-          location: event.location,
-          source: "event",
-          category: event.type
+          title: `${subjectLabel}${sa.title}`,
+          description: sa.description || "Subject activity",
+          source: "subject_activity",
+          category: sa.type,
+          subjectCode: sa.subjectCode,
+          time: sa.dueTime
         });
       });
 
@@ -372,7 +373,7 @@ export default function Dashboard() {
       <section className="hero">
         <div>
           <h1>CA1B Connect</h1>
-          <p className="motto">Creativity is Society’s Cab</p>
+          <p className="motto">Creativity is Society's Cab</p>
         </div>
 
         <div className="hero-date">
@@ -386,7 +387,7 @@ export default function Dashboard() {
       <section className="stats-grid">
         <div className="stat-card">
           <span>Students</span>
-          <strong>{studentCount}</strong>
+          <strong>{CLASS_STUDENT_COUNT}</strong>
           <p>Current CA1B class members</p>
         </div>
 
@@ -450,7 +451,7 @@ export default function Dashboard() {
 
       <div className="flow">
         <section className="panel">
-          <h2>Today’s Schedule</h2>
+          <h2>Today's Schedule</h2>
 
           {todaysSchedule.length === 0 ? (
             <p className="empty-state">No classes scheduled</p>
@@ -535,6 +536,24 @@ export default function Dashboard() {
                       </small>
                     )}
                     <span>{item.source || item.type}</span>
+                    {item.source === "subject_activity" && item.subjectCode && (
+                      <Link
+                        to={`/subjects?code=${item.subjectCode}`}
+                        className="cal-card-link"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        View in Subject
+                      </Link>
+                    )}
+                    {item.source === "activity" && (
+                      <Link
+                        to={`/activities?activity=${encodeURIComponent(item.title)}`}
+                        className="cal-card-link"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        View Details
+                      </Link>
+                    )}
                   </div>
                 ))
               )}

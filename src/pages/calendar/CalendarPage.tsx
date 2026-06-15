@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { useAuth } from "../../hooks/useAuth";
 import { getActivities } from "../../services/activityService";
@@ -11,6 +11,8 @@ import {
 } from "../../services/eventService";
 import { canManageEvents } from "../../services/permissionService";
 import { getUserProfile } from "../../services/profileService";
+import { getSubjectActivities } from "../../services/subjectService";
+import { SUBJECTS } from "../../data/ScheduleData";
 import type { ClassActivity } from "../../types/Activity";
 import type {
   CalendarEventType,
@@ -18,6 +20,7 @@ import type {
   EventFormValues
 } from "../../types/Event";
 import type { UserProfile } from "../../types/Profile";
+import type { SubjectActivity } from "../../types/Subject";
 
 import "./CalendarPage.css";
 
@@ -29,7 +32,8 @@ type CalendarItem = {
   details: string;
   time?: string;
   location?: string;
-  source: "activity" | "event";
+  source: "activity" | "event" | "subject_activity";
+  subjectCode?: string;
 };
 
 const EMPTY_FORM: EventFormValues = {
@@ -66,12 +70,19 @@ async function fetchCalendarState(uid: string, highlightedEventId: string | null
     getActivities()
   ]);
 
+  // Load subject-specific activities
+  const allSubjects = SUBJECTS.map(s => s.code);
+  const subjectActivityPromises = allSubjects.map(code => getSubjectActivities(code));
+  const subjectActivityResults = await Promise.all(subjectActivityPromises);
+  const loadedSubjectActivities = subjectActivityResults.flat();
+
   const highlighted = loadedEvents.find((event) => event.id === highlightedEventId);
 
   return {
     loadedProfile,
     loadedEvents,
     loadedActivities,
+    loadedSubjectActivities,
     highlighted
   };
 }
@@ -86,6 +97,7 @@ export default function CalendarPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [events, setEvents] = useState<ClassCalendarEvent[]>([]);
   const [activities, setActivities] = useState<ClassActivity[]>([]);
+  const [subjectActivities, setSubjectActivities] = useState<SubjectActivity[]>([]);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedEvent, setSelectedEvent] = useState<ClassCalendarEvent | null>(null);
   const [editing, setEditing] = useState(false);
@@ -118,8 +130,23 @@ export default function CalendarPage() {
       source: "activity"
     }));
 
-    return [...eventItems, ...activityItems].sort((a, b) => a.date.localeCompare(b.date));
-  }, [activities, events]);
+    const subjectActivityItems = subjectActivities.map<CalendarItem>((sa) => {
+      const subjectInfo = SUBJECTS.find(s => s.code === sa.subjectCode);
+      const subjectLabel = subjectInfo ? `[${subjectInfo.code}] ` : "";
+      return {
+        id: sa.id,
+        title: `${subjectLabel}${sa.title}`,
+        date: sa.dueDate,
+        type: sa.type,
+        details: sa.description || "Subject activity",
+        time: sa.dueTime,
+        source: "subject_activity" as const,
+        subjectCode: sa.subjectCode
+      };
+    });
+
+    return [...eventItems, ...activityItems, ...subjectActivityItems].sort((a, b) => a.date.localeCompare(b.date));
+  }, [activities, events, subjectActivities]);
 
   const monthItems = useMemo(
     () =>
@@ -141,12 +168,13 @@ export default function CalendarPage() {
     setMessage("");
 
     try {
-      const { loadedProfile, loadedEvents, loadedActivities, highlighted } =
+      const { loadedProfile, loadedEvents, loadedActivities, loadedSubjectActivities, highlighted } =
         await fetchCalendarState(user.uid, highlightedEventId);
 
       setProfile(loadedProfile);
       setEvents(loadedEvents);
       setActivities(loadedActivities);
+      setSubjectActivities(loadedSubjectActivities);
 
       if (highlighted) {
         const highlightedDate = new Date(`${highlighted.date}T00:00:00`);
@@ -173,12 +201,13 @@ export default function CalendarPage() {
       setMessage("");
 
       try {
-        const { loadedProfile, loadedEvents, loadedActivities, highlighted } =
+        const { loadedProfile, loadedEvents, loadedActivities, loadedSubjectActivities, highlighted } =
           await fetchCalendarState(user.uid, highlightedEventId);
 
         setProfile(loadedProfile);
         setEvents(loadedEvents);
         setActivities(loadedActivities);
+        setSubjectActivities(loadedSubjectActivities);
 
         if (highlighted) {
           const highlightedDate = new Date(`${highlighted.date}T00:00:00`);
@@ -466,6 +495,12 @@ export default function CalendarPage() {
                         <small>
                           {item.time || "Any time"} {item.location ? `• ${item.location}` : ""}
                         </small>
+                      )}
+
+                      {item.source === "subject_activity" && item.subjectCode && (
+                        <Link to={`/subjects?code=${item.subjectCode}`} className="cal-card-link">
+                          View in Subject →
+                        </Link>
                       )}
 
                       {item.source === "event" && canEdit && (

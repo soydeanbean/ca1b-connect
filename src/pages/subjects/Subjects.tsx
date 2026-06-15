@@ -32,6 +32,7 @@ import type {
 } from "../../types/Subject";
 import type { UserProfile } from "../../types/Profile";
 import { QRCodeSVG } from "qrcode.react";
+import { exportSubjectAttendanceExcel } from "../../services/excelExportService";
 import "./Subjects.css";
 
 type SubjectView = "grid" | "detail";
@@ -248,6 +249,16 @@ export default function Subjects() {
   const getCurrentSession = () => {
     if (!selectedSessionDate) return sessions[0] || null;
     return sessions.find(s => s.date === selectedSessionDate) || sessions[0] || null;
+  };
+
+  const handleExportExcel = () => {
+    if (!selectedSubject || !currentSession || !subjectInfo) return;
+    exportSubjectAttendanceExcel(
+      selectedSubject,
+      subjectInfo.name,
+      currentSession,
+      sessionRecords
+    );
   };
 
   // ─── Activity Handlers ───
@@ -615,6 +626,11 @@ export default function Subjects() {
                     <option key={s.id} value={s.date}>{formatDate(s.date)}</option>
                   ))}
                 </select>
+              )}
+              {currentSession && (
+                <button onClick={handleExportExcel}>
+                  📥 Export Excel
+                </button>
               )}
               {canEdit && currentSession && (
                 <button className="danger" onClick={handleDeleteSession} disabled={saving}>

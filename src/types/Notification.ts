@@ -2,7 +2,7 @@
 
 export type NotificationCategory = "major" | "minor";
 
-export type NotificationType = "announcement" | "global_activity" | "task_reminder";
+export type NotificationType = "announcement" | "global_activity" | "task_reminder" | "subject_activity";
 
 export type AppNotification = {
   id: string;

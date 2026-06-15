@@ -10,8 +10,11 @@ import type { AppNotification } from "../types/Notification";
 import type { Announcement } from "../types/Announcement";
 import type { ClassActivity } from "../types/Activity";
 import type { PersonalTask } from "../types/PersonalTask";
+import type { SubjectActivity } from "../types/Subject";
+import { SUBJECTS } from "../data/ScheduleData";
 
 const ACTIVITY_COLLECTION = "classCA1B_Activities";
+const SUBJECT_ACTIVITIES_COLLECTION = "subject_activities";
 const READ_STATE_KEY = "ca1b_read_notifications";
 
 export interface NotificationContextValue {
@@ -78,6 +81,21 @@ function taskToNotification(t: PersonalTask): AppNotification | null {
     }
   }
   return null;
+}
+
+function subjectActivityToNotification(sa: SubjectActivity, subjectLabel: string, subjectCode: string): AppNotification {
+  return {
+    id: `subject_activity-${sa.id}`,
+    type: "subject_activity",
+    category: "major",
+    title: `${subjectLabel}${sa.title}`,
+    message: sa.description
+      ? sa.description.length > 100 ? sa.description.slice(0, 100) + "..." : sa.description
+      : `Due: ${sa.dueDate}`,
+    link: `/subjects?code=${subjectCode}`,
+    isRead: false,
+    createdAt: sa.createdAt
+  };
 }
 
 function loadReadIds(): Set<string> {
@@ -148,6 +166,32 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       setNotifications((prev) => {
         const filtered = prev.filter((n) => n.type !== "announcement" || !n.link.startsWith("/activities"));
         return [...activityNotifs, ...filtered];
+      });
+    });
+
+    return unsub;
+  }, [user]);
+
+  // Listen for subject-specific activities (from subject_activities collection)
+  useEffect(() => {
+    if (!user) return;
+
+    const subjectActivitiesQuery = query(
+      collection(db, SUBJECT_ACTIVITIES_COLLECTION),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsub = onSnapshot(subjectActivitiesQuery, (snap) => {
+      const subjectActivityNotifs: AppNotification[] = [];
+      snap.docs.forEach((doc) => {
+        const sa = doc.data() as SubjectActivity;
+        const subjectInfo = SUBJECTS.find(s => s.code === sa.subjectCode);
+        const subjectLabel = subjectInfo ? `[${subjectInfo.code}] ` : "";
+        subjectActivityNotifs.push(subjectActivityToNotification(sa, subjectLabel, sa.subjectCode));
+      });
+      setNotifications((prev) => {
+        const filtered = prev.filter((n) => n.type !== "subject_activity");
+        return [...subjectActivityNotifs, ...filtered];
       });
     });
 
