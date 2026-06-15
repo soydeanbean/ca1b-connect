@@ -170,7 +170,7 @@ export function exportSubjectAttendanceMultipleSessions(
   // Headers
   const headers = ["#", "Student Number", "Student Name", ...dateHeaders, "Present", "Late", "Absent", "Excused", "Rate"];
 
-  const dataRows = sortedStudents.map(([uid, data], idx) => {
+  const dataRows = sortedStudents.map(([, data], idx) => {
     const totalSessions = sessions.length;
     let present = 0, late = 0, absent = 0, excused = 0;
     const statuses = sessions.map(s => {

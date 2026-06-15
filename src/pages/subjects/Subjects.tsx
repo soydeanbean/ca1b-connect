@@ -7,7 +7,6 @@ import {
   getAllSubjects,
   getSubjectInfo,
   createSession,
-  getSession,
   getSubjectSessions,
   updateSessionRecord,
   getSubjectActivities,
@@ -17,8 +16,6 @@ import {
   toggleSubjectActivityCompletion,
   getActivityDeadlineLabel,
   getTodayDateId,
-  recordLateScan,
-  getAllSessions,
   getStudentAttendancePerSubject
 } from "../../services/subjectService";
 import {
@@ -27,7 +24,6 @@ import {
   isSubjectScheduledToday
 } from "../../data/ScheduleData";
 import type {
-  Subject,
   AttendanceSession,
   SessionAttendanceStatus,
   SubjectActivity,
@@ -338,7 +334,6 @@ export default function Subjects() {
         <div className="subjects-grid">
           {sortedBySchedule.map((subject) => {
             const scheduledToday = isSubjectScheduledToday(subject.code);
-            const todaySesh = scheduledToday;
             const perfStats = studentPerf[subject.code];
             const isAssembly = subject.code === "ASSEMBLY" || subject.code === "EXAMEN";
 

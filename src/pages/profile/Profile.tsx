@@ -10,7 +10,6 @@ import {
 import { formatText, formatDateLabel } from "../../utils/formatters";
 import { getStudentAttendanceOverview } from "../../services/attendanceService";
 import { getActivities, getActivityStats } from "../../services/activityService";
-import { getStudentAttendancePerSubject, getStudentSubjectActivityStats, getAllSubjects } from "../../services/subjectService";
 
 import type { UserProfile } from "../../types/Profile";
 import type { PersonalAttendanceOverview } from "../../types/Attendance";

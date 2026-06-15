@@ -1,5 +1,5 @@
 // src/data/ScheduleData.ts
-import type { DayOfWeek, SubjectSchedule } from "../types/Subject";
+import type { DayOfWeek } from "../types/Subject";
 
 export interface ScheduleEntry {
   time: string;
@@ -69,7 +69,6 @@ export const SUBJECTS = [
 ];
 
 export function getTodaySchedule(): ScheduleEntry[] {
-  const dayNames: DayOfWeek[] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
   const today = new Date().toLocaleDateString("en-US", { weekday: "long" }) as DayOfWeek;
   return SCHEDULE[today] || [];
 }

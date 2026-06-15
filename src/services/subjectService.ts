@@ -11,11 +11,10 @@ import {
   where,
   orderBy,
   serverTimestamp,
-  runTransaction,
-  Timestamp
+  runTransaction
 } from "firebase/firestore";
 import { db } from "../lib/firebase";
-import { SUBJECTS, getSubjectSchedule } from "../data/ScheduleData";
+import { SUBJECTS } from "../data/ScheduleData";
 import { getActiveClassStudents } from "./attendanceService";
 import type {
   AttendanceSession,
@@ -39,15 +38,6 @@ export function getTodayDateId() {
     month: "2-digit",
     day: "2-digit"
   }).format(new Date());
-}
-
-function formatDateLabel(date: string) {
-  const parsed = new Date(`${date}T00:00:00`);
-  return parsed.toLocaleDateString("en-PH", {
-    month: "long",
-    day: "numeric",
-    year: "numeric"
-  });
 }
 
 // ─── Subject Info ───
@@ -363,13 +353,12 @@ export async function getStudentSubjectActivityStats(uid: string) {
     const today = getTodayDateId();
     const completed = activities.filter(a => a.completedBy?.[uid]);
     const missing = activities.filter(a => a.dueDate < today && !a.completedBy?.[uid]);
-    const overdue = activities.filter(a => a.dueDate < today && !a.completedBy?.[uid]);
 
     result[subject.code] = {
       total: activities.length,
       completed: completed.length,
       missing: missing.length,
-      overdue: overdue.length
+      overdue: missing.length
     };
   }
 
