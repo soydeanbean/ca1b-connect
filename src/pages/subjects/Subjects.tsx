@@ -16,7 +16,8 @@ import {
   toggleSubjectActivityCompletion,
   getActivityDeadlineLabel,
   getTodayDateId,
-  getStudentAttendancePerSubject
+  getStudentAttendancePerSubject,
+  deleteSession
 } from "../../services/subjectService";
 import {
   getTodaySchedule,
@@ -224,6 +225,26 @@ export default function Subjects() {
     }
   };
 
+  const handleDeleteSession = async () => {
+    if (!selectedSubject) return;
+    const date = selectedSessionDate || todayDate;
+    if (!window.confirm(`Delete attendance for ${formatDate(date)}? This cannot be undone.`)) return;
+    setSaving(true);
+    setMessage("");
+    try {
+      await deleteSession(selectedSubject, date);
+      setSessions(prev => prev.filter(s => s.date !== date));
+      setSelectedSessionDate(sessions.filter(s => s.date !== date)[0]?.date || "");
+      if (todaySession?.date === date) setTodaySession(null);
+      setMessage("✅ Attendance session deleted");
+    } catch (e) {
+      setMessage("❌ Could not delete session");
+      console.error(e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const getCurrentSession = () => {
     if (!selectedSessionDate) return sessions[0] || null;
     return sessions.find(s => s.date === selectedSessionDate) || sessions[0] || null;
@@ -325,7 +346,7 @@ export default function Subjects() {
           <div>
             <span className="subjects-eyebrow">CA1B Connect</span>
             <h1>Subjects</h1>
-            <p>Your academic dashboard — access activities, attendance, and resources per subject.</p>
+            <p>Your academic dashboadr. access activities, attendance, and resources per subject.</p>
           </div>
         </div>
 
@@ -595,6 +616,11 @@ export default function Subjects() {
                   ))}
                 </select>
               )}
+              {canEdit && currentSession && (
+                <button className="danger" onClick={handleDeleteSession} disabled={saving}>
+                  🗑️ Delete
+                </button>
+              )}
             </div>
           </div>
 
@@ -679,12 +705,7 @@ export default function Subjects() {
             <div className="qr-display-card">
               <div className="qr-code-container">
                 <QRCodeSVG
-                  value={JSON.stringify({
-                    type: "ca1b_late_attendance",
-                    subjectCode: selectedSubject,
-                    date: todayDate,
-                    redirect: `${qrBaseUrl}/qr-attendance?subject=${selectedSubject}&date=${todayDate}`
-                  })}
+                  value={`${qrBaseUrl}/qr-attendance?subject=${selectedSubject}&date=${todayDate}`}
                   size={280}
                   level="H"
                   includeMargin
