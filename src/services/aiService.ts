@@ -1,83 +1,119 @@
 // src/services/aiService.ts
 
-import { getFunctions, httpsCallable } from "firebase/functions";
 import type { AICreateResult, AIError } from "../types/AI";
 
-const functions = getFunctions();
+/**
+ * Get the base URL for API calls.
+ * In development (localhost), calls go to the Vite dev server which proxies to Vercel.
+ * In production (Vercel), calls go to the same domain (no CORS issues).
+ */
+function getApiBaseUrl(): string {
+  // When running on Vercel, use relative paths (same origin)
+  // When running locally, Vite proxy will handle forwarding
+  return "";
+}
 
 /**
- * Call the AI Create Instances cloud function
+ * Call the AI Create Instances API endpoint
  * Sends a prompt and receives structured JSON result
  */
 export async function aiCreateInstances(prompt: string): Promise<AICreateResult> {
-  const createInstances = httpsCallable<{ prompt: string }, { success: boolean; data: AICreateResult }>(
-    functions,
-    "aiCreateInstances"
-  );
-
   try {
-    const result = await createInstances({ prompt });
-    const { data } = result.data;
-    
-    if (!data) {
+    const response = await fetch(`${getApiBaseUrl()}/api/ai/create-instances`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ prompt }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw buildAIError(
+        parseErrorType(response.status, result.error),
+        result.error || "AI request failed."
+      );
+    }
+
+    if (!result.data) {
       throw buildAIError("parse", "AI returned an empty response.");
     }
 
-    return data;
+    return result.data;
   } catch (error: any) {
+    // If it's already an AIError, re-throw it
+    if (error.type && error.message) {
+      throw error;
+    }
     throw parseAIError(error);
   }
 }
 
 /**
- * Call the AI Ask Question cloud function
+ * Call the AI Ask Question API endpoint
  * Sends a question and receives a text answer
  */
 export async function aiAskQuestion(question: string): Promise<string> {
-  const askQuestion = httpsCallable<{ question: string }, { success: boolean; answer: string }>(
-    functions,
-    "aiAskQuestion"
-  );
-
   try {
-    const result = await askQuestion({ question });
-    const { answer } = result.data;
-    
-    if (!answer) {
+    const response = await fetch(`${getApiBaseUrl()}/api/ai/ask-question`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ question }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw buildAIError(
+        parseErrorType(response.status, result.error),
+        result.error || "AI request failed."
+      );
+    }
+
+    if (!result.answer) {
       throw buildAIError("parse", "AI returned an empty response.");
     }
 
-    return answer;
+    return result.answer;
   } catch (error: any) {
+    if (error.type && error.message) {
+      throw error;
+    }
     throw parseAIError(error);
   }
 }
 
 /**
- * Parse errors from Firebase callable functions into structured AI errors
+ * Map HTTP status codes to AI error types
+ */
+function parseErrorType(status: number, message?: string): AIError["type"] {
+  if (status === 429) return "quota";
+  if (status === 400 && message?.includes("safety")) return "safety";
+  if (status >= 500) return "network";
+  return "unknown";
+}
+
+/**
+ * Parse generic errors into structured AI errors
  */
 function parseAIError(error: any): AIError {
-  // Firebase function errors
   const message = error?.message || "An unknown error occurred.";
-  
+
   if (message.includes("safety") || message.includes("SAFETY")) {
     return buildAIError("safety", message);
   }
-  
-  if (message.includes("quota") || message.includes("QUOTA")) {
+
+  if (message.includes("quota") || message.includes("QUOTA") || message.includes("429")) {
     return buildAIError("quota", "AI service is currently busy. Please try again later.");
   }
 
-  if (message.includes("unauthenticated") || message.includes("Authentication")) {
-    return buildAIError("network", "You must be logged in to use AI features.");
-  }
-
-  // Network errors
-  if (error?.code === "functions/unavailable" || error?.code === "functions/deadline-exceeded") {
+  if (message.includes("fetch") || message.includes("NetworkError") || message.includes("Failed to fetch")) {
     return buildAIError("network", "AI service is temporarily unavailable. Please try again.");
   }
 
-  // Default
   return buildAIError("unknown", message);
 }
 
