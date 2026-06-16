@@ -91,7 +91,16 @@ If you don't know the answer, say so honestly.`;
 
 // ─── Callable: aiCreateInstances ───
 export const aiCreateInstances = onCall(
-  { cors: true, maxInstances: 5 },
+  { 
+    cors: [
+      "https://ca1b-connect.vercel.app",
+      "https://ca1b-connect.web.app",
+      "https://ca1b-connect.firebaseapp.com",
+      "http://localhost:5173",
+      "http://localhost:3000"
+    ], 
+    maxInstances: 5 
+  },
   async (request) => {
     const uid = assertAuth(request.auth);
     const { prompt } = request.data;
@@ -182,7 +191,16 @@ export const aiCreateInstances = onCall(
 
 // ─── Callable: aiAskQuestion ───
 export const aiAskQuestion = onCall(
-  { cors: true, maxInstances: 10 },
+  { 
+    cors: [
+      "https://ca1b-connect.vercel.app",
+      "https://ca1b-connect.web.app",
+      "https://ca1b-connect.firebaseapp.com",
+      "http://localhost:5173",
+      "http://localhost:3000"
+    ], 
+    maxInstances: 10 
+  },
   async (request) => {
     const uid = assertAuth(request.auth);
     const { question } = request.data;
