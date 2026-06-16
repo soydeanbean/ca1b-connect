@@ -16,6 +16,7 @@ import Register from "./pages/auth/Register";
 
 import Landing from "./pages/landing/Landing";
 import Announcements from "./pages/announcements/Announcements";
+import AI from "./pages/ai/AI";
 
 import ProtectedRoute from "./routes/ProtectedRoute";
 import PublicRoute from "./routes/PublicRoute";
@@ -92,6 +93,7 @@ function AppRoutes() {
                     <Route path="/calendar" element={<CalendarPage />} />
                     <Route path="/profile" element={<Profile />} />
                     <Route path="/announcements" element={<Announcements />} />
+                    <Route path="/ai" element={<AI />} />
                   </Routes>
                 </main>
               </div>

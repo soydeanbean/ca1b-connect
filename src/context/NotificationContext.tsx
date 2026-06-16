@@ -1,6 +1,6 @@
 // src/context/NotificationContext.tsx
 
-import { createContext, useEffect, useState, useCallback, type ReactNode } from "react";
+import { createContext, useEffect, useState, useCallback, useMemo, type ReactNode } from "react";
 import { collection, onSnapshot, orderBy, query, Timestamp } from "firebase/firestore";
 import { db } from "../lib/firebase";
 import { useAuth } from "../hooks/useAuth";
@@ -16,28 +16,34 @@ import { SUBJECTS } from "../data/ScheduleData";
 const ACTIVITY_COLLECTION = "classCA1B_Activities";
 const SUBJECT_ACTIVITIES_COLLECTION = "subject_activities";
 const READ_STATE_KEY = "ca1b_read_notifications";
+const STORAGE_VERSION_KEY = "ca1b_notif_version";
 
 export interface NotificationContextValue {
   notifications: AppNotification[];
   unreadCount: number;
   markAllRead: () => void;
+  markAsRead: (id: string) => void;
   majorNotifications: AppNotification[];
   minorNotifications: AppNotification[];
+  /** Returns number of unread notifications related to a specific subject code */
+  getSubjectUnreadCount: (subjectCode: string) => number;
 }
 
 export const NotificationContext = createContext<NotificationContextValue>({
   notifications: [],
   unreadCount: 0,
   markAllRead: () => {},
+  markAsRead: () => {},
   majorNotifications: [],
-  minorNotifications: []
+  minorNotifications: [],
+  getSubjectUnreadCount: () => 0
 });
 
 function announcementToNotification(a: Announcement): AppNotification {
   return {
     id: `announcement-${a.id}`,
     type: "announcement",
-    category: "major",
+    category: a.category || "major",
     title: a.title,
     message: a.content.length > 100 ? a.content.slice(0, 100) + "..." : a.content,
     link: `/announcements?id=${a.id}`,
@@ -98,6 +104,7 @@ function subjectActivityToNotification(sa: SubjectActivity, subjectLabel: string
   };
 }
 
+// ─── Persistence helpers with versioning to avoid stale data ───
 function loadReadIds(): Set<string> {
   try {
     const stored = localStorage.getItem(READ_STATE_KEY);
@@ -111,13 +118,29 @@ function loadReadIds(): Set<string> {
 function saveReadIds(ids: Set<string>) {
   try {
     localStorage.setItem(READ_STATE_KEY, JSON.stringify([...ids]));
+    localStorage.setItem(STORAGE_VERSION_KEY, Date.now().toString());
   } catch {}
+}
+
+// ─── Check if a notification is related to a specific subject ───
+function getNotificationSubjectCode(n: AppNotification): string | null {
+  // subject_activity notifications have the subject code in the link
+  if (n.type === "subject_activity") {
+    const match = n.link.match(/code=([A-Z0-9]+)/);
+    if (match) return match[1];
+  }
+  // Check if title contains a subject code pattern
+  const codeMatch = n.title.match(/\[([A-Z0-9]+)\]/);
+  if (codeMatch) return codeMatch[1];
+
+  return null;
 }
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [readIds, setReadIds] = useState<Set<string>>(loadReadIds);
+  const [version, setVersion] = useState(0);
 
   // Persist read state whenever it changes
   useEffect(() => {
@@ -143,6 +166,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         const filtered = prev.filter((n) => !n.type.startsWith("announcement"));
         return [...announcementNotifs, ...filtered];
       });
+      // Bump version to trigger re-render on all consumers
+      setVersion(v => v + 1);
     });
 
     return unsub;
@@ -232,18 +257,51 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     const allIds = new Set(notifications.map((n) => n.id));
     setReadIds(allIds);
     saveReadIds(allIds);
+    setVersion(v => v + 1);
   }, [notifications]);
 
-  const notificationsWithReadStatus = notifications.map((n) => ({
-    ...n,
-    isRead: readIds.has(n.id)
-  }));
+  const markAsRead = useCallback((id: string) => {
+    setReadIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  }, []);
+
+  const notificationsWithReadStatus = useMemo(() => 
+    notifications.map((n) => ({
+      ...n,
+      isRead: readIds.has(n.id)
+    })),
+    [notifications, readIds, version]
+  );
 
   // Calculate unread count based on persisted read state
-  const unreadCount = notificationsWithReadStatus.filter((n) => !n.isRead).length;
+  const unreadCount = useMemo(
+    () => notificationsWithReadStatus.filter((n) => !n.isRead).length,
+    [notificationsWithReadStatus]
+  );
 
-  const majorNotifications = notificationsWithReadStatus.filter((n) => n.category === "major");
-  const minorNotifications = notificationsWithReadStatus.filter((n) => n.category === "minor");
+  const majorNotifications = useMemo(
+    () => notificationsWithReadStatus.filter((n) => n.category === "major"),
+    [notificationsWithReadStatus]
+  );
+
+  const minorNotifications = useMemo(
+    () => notificationsWithReadStatus.filter((n) => n.category === "minor"),
+    [notificationsWithReadStatus]
+  );
+
+  const getSubjectUnreadCount = useCallback(
+    (subjectCode: string): number => {
+      return notificationsWithReadStatus.filter((n) => {
+        if (n.isRead) return false;
+        const notifSubjectCode = getNotificationSubjectCode(n);
+        return notifSubjectCode === subjectCode;
+      }).length;
+    },
+    [notificationsWithReadStatus]
+  );
 
   return (
     <NotificationContext.Provider
@@ -251,8 +309,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         notifications: notificationsWithReadStatus,
         unreadCount,
         markAllRead,
+        markAsRead,
         majorNotifications,
-        minorNotifications
+        minorNotifications,
+        getSubjectUnreadCount
       }}
     >
       {children}

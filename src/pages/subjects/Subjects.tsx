@@ -1,6 +1,7 @@
 // src/pages/subjects/Subjects.tsx
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "../../hooks/useAuth";
+import { useNotifications } from "../../hooks/useNotifications";
 import { getUserProfile } from "../../services/profileService";
 import { canManageActivities } from "../../services/permissionService";
 import {
@@ -81,6 +82,7 @@ function formatTime(time: string) {
 
 export default function Subjects() {
   const { user } = useAuth();
+  const { getSubjectUnreadCount } = useNotifications();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [view, setView] = useState<SubjectView>("grid");
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
@@ -368,14 +370,20 @@ export default function Subjects() {
             const scheduledToday = isSubjectScheduledToday(subject.code);
             const perfStats = studentPerf[subject.code];
             const isAssembly = subject.code === "ASSEMBLY" || subject.code === "EXAMEN";
+            const unreadNotifs = getSubjectUnreadCount(subject.code);
 
             return (
               <article
                 key={subject.code}
-                className={`subject-card ${scheduledToday ? "today" : ""}`}
+                className={`subject-card ${scheduledToday ? "today" : ""} ${unreadNotifs > 0 ? "has-notifications" : ""}`}
                 onClick={() => !isAssembly && handleSelectSubject(subject.code)}
                 style={{ cursor: isAssembly ? "default" : "pointer" }}
               >
+                {unreadNotifs > 0 && (
+                  <span className="subject-notif-badge">
+                    {unreadNotifs > 99 ? "99+" : unreadNotifs}
+                  </span>
+                )}
                 <div
                   className="subject-card-bg"
                   style={{
