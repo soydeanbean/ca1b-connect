@@ -245,7 +245,7 @@
 /* NOTIFICATION DROPDOWN */
 .notification-dropdown {
   position: absolute;
-  top: 54px;
+  top: 0px;
   right: 0;
   width: 360px;
   max-height: 460px;
