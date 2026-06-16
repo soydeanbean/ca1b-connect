@@ -357,7 +357,7 @@ export default function Subjects() {
           <div>
             <span className="subjects-eyebrow">CA1B Connect</span>
             <h1>Subjects</h1>
-            <p>Your academic dashboadr. access activities, attendance, and resources per subject.</p>
+            <p>Your academic dashboard. access activities, attendance, and resources per subject.</p>
           </div>
         </div>
 
