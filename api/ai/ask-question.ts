@@ -5,9 +5,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const SYSTEM_PROMPT = `You are a helpful AI assistant for CA1B Connect, a class management system.
-Answer the user's question directly, concisely, and accurately.
-Keep responses short and to the point. Do not add unnecessary explanations.
-If you don't know the answer, say so honestly.`;
+Answer the user's question concisely, if you dont know the answer, be honest.`;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Only allow POST
