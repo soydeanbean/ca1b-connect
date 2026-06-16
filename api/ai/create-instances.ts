@@ -111,16 +111,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("Gemini API error:", response.status, errText);
+      console.error("Gemini API error:", response.status, errText.slice(0, 1000));
 
-      if (response.status === 429) {
-        return res.status(429).json({ error: "AI service is currently busy. Please try again later." });
+      if (response.status === 429 || errText.includes("RATE_LIMIT") || errText.includes("quota")) {
+        return res.status(429).json({ error: "AI rate limit reached. Gemini free tier has daily limits. Please try again tomorrow." });
+      }
+      if (response.status === 403 || errText.includes("API_KEY") || errText.includes("NOT_FOUND")) {
+        return res.status(500).json({ error: "AI service configuration error — check Vercel environment variable GEMINI_API_KEY." });
       }
       if (response.status === 400 && errText.includes("SAFETY")) {
-        return res.status(400).json({ error: "AI blocked the request due to safety concerns. Please rephrase." });
+        return res.status(400).json({ error: "AI blocked due to safety concerns. Please rephrase." });
       }
 
-      return res.status(500).json({ error: "AI service error." });
+      return res.status(500).json({ error: `AI service error (${response.status}). Try again later.` });
     }
 
     const data = await response.json();
