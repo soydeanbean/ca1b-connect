@@ -255,7 +255,7 @@
   box-shadow: 0 15px 40px rgba(0,0,0,0.15);
   opacity: 0;
   visibility: hidden;
-  transform: translateY(-50px);
+  transform: translateY(-10px);
   transition: 0.25s ease;
   z-index: 1001;
 }
@@ -263,7 +263,7 @@
 .notification-dropdown.show {
   opacity: 1;
   visibility: visible;
-  transform: translateY(0);
+  transform: translateY(40);
 }
 
 .notification-dropdown-header {
