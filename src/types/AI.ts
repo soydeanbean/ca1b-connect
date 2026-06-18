@@ -30,6 +30,7 @@ export interface AISubjectAnnouncementResult {
   content: string;
   pinned: boolean;
   dueDate: string;
+  dueTime: string;
 }
 
 export type AICreateResult = AIAssignmentResult | AIAnnouncementResult | AISubjectAnnouncementResult;
