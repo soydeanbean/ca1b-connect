@@ -6,6 +6,8 @@ export interface Subject {
   room: string;
   backgroundImage: string;
   createdAt: unknown;
+  color?: string;
+  icon?: string;
 }
 
 export interface SubjectSchedule {

@@ -7,6 +7,10 @@ export type Announcement = {
   title: string;
   content: string;
   category: AnnouncementCategory;
+  subjectCode?: string;
+  subjectName?: string;
+  pinned?: boolean;
+  attachments?: AnnouncementAttachment[];
   createdBy: string;            // uid
   creatorName: string;
   creatorRole: string;
@@ -15,8 +19,17 @@ export type Announcement = {
   updatedAt: unknown;
 };
 
+export type AnnouncementAttachment = {
+  name: string;
+  url: string;
+  type: string;
+  size: number;
+};
+
 export type AnnouncementFormValues = {
   title: string;
   content: string;
   category: AnnouncementCategory;
+  subjectCode?: string;
+  pinned?: boolean;
 };

@@ -3,7 +3,15 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { useNotifications } from "../../hooks/useNotifications";
 import { getUserProfile } from "../../services/profileService";
-import { canManageActivities } from "../../services/permissionService";
+import { canManageActivities, canCreateAnnouncements } from "../../services/permissionService";
+import {
+  getSubjectAnnouncements,
+  createSubjectAnnouncement,
+  updateSubjectAnnouncement,
+  deleteSubjectAnnouncement,
+  togglePinSubjectAnnouncement
+} from "../../services/subjectAnnouncementService";
+import type { SubjectAnnouncement, SubjectAnnouncementFormValues } from "../../types/SubjectAnnouncement";
 import {
   getAllSubjects,
   getSubjectInfo,
@@ -37,7 +45,7 @@ import { exportSubjectAttendanceExcel } from "../../services/excelExportService"
 import "./Subjects.css";
 
 type SubjectView = "grid" | "detail";
-type DetailTab = "activities" | "attendance" | "qrcode" | "schedule";
+type DetailTab = "activities" | "attendance" | "qrcode" | "schedule" | "announcements";
 
 const SESSION_STATUS_LABELS: Record<SessionAttendanceStatus, string> = {
   present: "Present",
@@ -105,11 +113,107 @@ export default function Subjects() {
   // QR state
   const [qrBaseUrl, setQrBaseUrl] = useState("");
 
+  // Subject Announcements state
+  const [subjectAnnouncements, setSubjectAnnouncements] = useState<SubjectAnnouncement[]>([]);
+  const [announcementForm, setAnnouncementForm] = useState<SubjectAnnouncementFormValues>({
+    title: "",
+    content: "",
+    pinned: false,
+    dueDate: ""
+  });
+  const [editingAnnouncement, setEditingAnnouncement] = useState<string | null>(null);
+  const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
+
   // Student stats
   const [studentPerf, setStudentPerf] = useState<Record<string, any>>({});
 
   const canEdit = canManageActivities(profile);
+  const canCreateAnnc = canCreateAnnouncements(profile);
   const todayDate = getTodayDateId();
+
+  // ─── Announcement Handlers ───
+
+  function formatTimestamp(ts: unknown) {
+    if (!ts) return "";
+    const date = ts instanceof Date ? ts : (ts as { toDate?: () => Date })?.toDate?.() || new Date(String(ts));
+    return date.toLocaleDateString("en-PH", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    });
+  }
+
+  const handleSaveAnnouncement = async () => {
+    if (!profile || !selectedSubject || !announcementForm.title.trim()) {
+      setMessage("Title is required.");
+      return;
+    }
+    setSaving(true);
+    setMessage("");
+    try {
+      if (editingAnnouncement) {
+        await updateSubjectAnnouncement(editingAnnouncement, announcementForm, profile.uid);
+      } else {
+        await createSubjectAnnouncement(announcementForm, selectedSubject, profile);
+      }
+      setShowAnnouncementForm(false);
+      setEditingAnnouncement(null);
+      setAnnouncementForm({ title: "", content: "", pinned: false, dueDate: "" });
+      const anncs = await getSubjectAnnouncements(selectedSubject);
+      setSubjectAnnouncements(anncs);
+      setMessage(editingAnnouncement ? "✅ Announcement updated" : "✅ Announcement created");
+    } catch (e) {
+      setMessage("❌ Could not save announcement");
+      console.error(e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEditAnnouncement = (annc: SubjectAnnouncement) => {
+    setEditingAnnouncement(annc.id);
+    setAnnouncementForm({
+      title: annc.title,
+      content: annc.content,
+      pinned: annc.pinned,
+      dueDate: annc.dueDate || ""
+    });
+    setShowAnnouncementForm(true);
+  };
+
+  const handleTogglePin = async (annc: SubjectAnnouncement) => {
+    if (!selectedSubject) return;
+    setSaving(true);
+    try {
+      await togglePinSubjectAnnouncement(annc.id, annc.pinned);
+      const anncs = await getSubjectAnnouncements(selectedSubject);
+      setSubjectAnnouncements(anncs);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteAnnouncement = async (id: string) => {
+    if (!window.confirm("Delete this announcement?")) return;
+    if (!selectedSubject) return;
+    setSaving(true);
+    try {
+      await deleteSubjectAnnouncement(id);
+      const anncs = await getSubjectAnnouncements(selectedSubject);
+      setSubjectAnnouncements(anncs);
+      setMessage("✅ Announcement deleted");
+    } catch (e) {
+      setMessage("❌ Could not delete");
+      console.error(e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
 
   const subjects = getAllSubjects();
 
@@ -141,12 +245,14 @@ export default function Subjects() {
   const loadSubjectData = useCallback(async (subjectCode: string) => {
     if (!subjectCode) return;
     try {
-      const [acts, allSessions] = await Promise.all([
+      const [acts, allSessions, anncs] = await Promise.all([
         getSubjectActivities(subjectCode),
-        getSubjectSessions(subjectCode)
+        getSubjectSessions(subjectCode),
+        getSubjectAnnouncements(subjectCode)
       ]);
       setActivities(acts);
       setSessions(allSessions);
+      setSubjectAnnouncements(anncs);
 
       // Set today's session if exists
       const todaySesh = allSessions.find(s => s.date === todayDate);
@@ -460,6 +566,7 @@ export default function Subjects() {
       {/* Tabs */}
       <div className="subject-tabs">
         <button className={detailTab === "activities" ? "active" : ""} onClick={() => setDetailTab("activities")}>📝 Activities</button>
+        <button className={detailTab === "announcements" ? "active" : ""} onClick={() => setDetailTab("announcements")}>📢 Announcements</button>
         <button className={detailTab === "attendance" ? "active" : ""} onClick={() => setDetailTab("attendance")}>✅ Attendance</button>
         <button className={detailTab === "qrcode" ? "active" : ""} onClick={() => setDetailTab("qrcode")}>📱 QR Late</button>
         <button className={detailTab === "schedule" ? "active" : ""} onClick={() => setDetailTab("schedule")}>📅 Schedule</button>
@@ -754,6 +861,112 @@ export default function Subjects() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── ANNOUNCEMENTS TAB ── */}
+      {detailTab === "announcements" && (
+        <div className="subject-announcements-tab">
+          <div className="subject-activities-header">
+            <h2>Announcements</h2>
+            {canCreateAnnc && (
+              <button onClick={() => { setShowAnnouncementForm(true); setEditingAnnouncement(null); setAnnouncementForm({ title: "", content: "", pinned: false, dueDate: "" }); }}>
+                + New Announcement
+              </button>
+            )}
+          </div>
+
+          {showAnnouncementForm && (
+            <div className="announcement-form-overlay" onClick={() => setShowAnnouncementForm(false)}>
+              <div className="announcement-form-modal" onClick={e => e.stopPropagation()}>
+                <h3>{editingAnnouncement ? "Edit Announcement" : "New Announcement"}</h3>
+                <label>
+                  Title
+                  <input
+                    value={announcementForm.title}
+                    onChange={e => setAnnouncementForm(f => ({ ...f, title: e.target.value }))}
+                    placeholder="Announcement title..."
+                  />
+                </label>
+                <label>
+                  Content
+                  <textarea
+                    rows={5}
+                    value={announcementForm.content}
+                    onChange={e => setAnnouncementForm(f => ({ ...f, content: e.target.value }))}
+                    placeholder="Write your announcement..."
+                  />
+                </label>
+                <label className="ann-form-row">
+                  <input
+                    type="checkbox"
+                    checked={announcementForm.pinned}
+                    onChange={e => setAnnouncementForm(f => ({ ...f, pinned: e.target.checked }))}
+                  />
+                  <span>Pin this announcement</span>
+                </label>
+                <label>
+                  Due date (optional)
+                  <input
+                    type="date"
+                    value={announcementForm.dueDate}
+                    onChange={e => setAnnouncementForm(f => ({ ...f, dueDate: e.target.value }))}
+                  />
+                </label>
+                <div className="activity-form-actions">
+                  <button className="secondary" onClick={() => { setShowAnnouncementForm(false); setEditingAnnouncement(null); }}>Cancel</button>
+                  <button onClick={handleSaveAnnouncement} disabled={saving}>{saving ? "Saving..." : "Save"}</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {!showAnnouncementForm && (
+            <div className="subject-announcements-list">
+              {subjectAnnouncements.length === 0 ? (
+                <div className="activity-empty">No announcements yet.</div>
+              ) : (
+                subjectAnnouncements.map(annc => (
+                  <article key={annc.id} className={`subject-annc-card ${annc.pinned ? "pinned" : ""}`}>
+                    <div className="subject-annc-header">
+                      {annc.pinned && <span className="annc-pin-badge">📌 Pinned</span>}
+                      <span className="annc-creator">
+                        {annc.creatorName} · {annc.creatorRole}
+                      </span>
+                      <span className="annc-date">
+                        {formatTimestamp(annc.createdAt)}
+                      </span>
+                    </div>
+                    <h3>{annc.title}</h3>
+                    <p className="annc-content">{annc.content}</p>
+                    {annc.dueDate && (
+                      <span className="annc-due">Due: {formatDate(annc.dueDate)}</span>
+                    )}
+                    {annc.attachments.length > 0 && (
+                      <div className="annc-attachments">
+                        {annc.attachments.map((att, i) => (
+                          <a key={i} href={att.url} target="_blank" rel="noreferrer" className="annc-attachment">
+                            📎 {att.name}
+                          </a>
+                        ))}
+                      </div>
+                    )}
+                    <div className="annc-actions">
+                      {canCreateAnnc && (
+                        <>
+                          <button className="secondary small" onClick={() => handleEditAnnouncement(annc)}>✏️ Edit</button>
+                          <button className="secondary small" onClick={() => handleTogglePin(annc)}>
+                            {annc.pinned ? "📌 Unpin" : "📌 Pin"}
+                          </button>
+                          <button className="danger small" onClick={() => handleDeleteAnnouncement(annc.id)}>🗑️ Delete</button>
+                        </>
+                      )}
+                    </div>
+                  </article>
+                ))
+              )}
             </div>
           )}
         </div>

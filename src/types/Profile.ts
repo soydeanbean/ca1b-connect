@@ -1,6 +1,6 @@
 // src/types/Profile.ts
 
-export type UserRole = "student" | "visitor" | "teacher";
+export type UserRole = "student" | "visitor" | "teacher" | "admin";
 export type ProfileStatus = "active" | "pending" | "blocked";
 
 export type OfficerRole =
@@ -28,6 +28,7 @@ export type UserProfile = {
   section: string;
   bio: string;
   photoURL: string;
+  privacyMode?: "public" | "private";
   createdAt: unknown;
   updatedAt: unknown;
 };

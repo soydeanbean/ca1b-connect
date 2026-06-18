@@ -1,0 +1,257 @@
+/* ============= SUBJECT ANNOUNCEMENTS PAGE ============= */
+.subject-anncs-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 0 3rem;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  font-size: 1.1rem;
+  color: var(--muted);
+}
+
+/* Reuse page-header, page-eyebrow, sa-filters, sa-search, sa-count, sa-empty from SubjectActivities.css */
+/* Those are already imported via the same naming convention */
+
+.sa-annc-card {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1.1rem 1.25rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sa-annc-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(255, 140, 0, 0.08);
+}
+
+.sa-annc-card.pinned {
+  border-color: var(--primary);
+  background: linear-gradient(135deg, rgba(255, 140, 0, 0.05), var(--surface-raised));
+}
+
+.sa-annc-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.83rem;
+  color: var(--muted);
+}
+
+.sa-pin-badge {
+  font-size: 0.9rem;
+}
+
+.sa-annc-subject {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  background: rgba(255, 140, 0, 0.1);
+  color: var(--primary);
+}
+
+.sa-annc-date {
+  margin-left: auto;
+  font-size: 0.78rem;
+}
+
+.sa-annc-card h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  margin-bottom: 0.3rem;
+}
+
+.sa-annc-preview {
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.5;
+  margin-bottom: 0.5rem;
+}
+
+.sa-annc-creator {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.sa-annc-creator span:first-child {
+  font-weight: 600;
+}
+
+/* Detail */
+.sa-detail-creator {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.annc-pin-badge {
+  background: var(--primary);
+  color: white;
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.sa-date {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.annc-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.annc-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.6rem;
+  background: rgba(100, 100, 100, 0.15);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.annc-attachment:hover {
+  background: rgba(100, 100, 100, 0.3);
+}
+
+/* Reuse detail overlay/modal from SubjectActivities.css */
+.sa-detail-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  padding: 1rem;
+}
+
+.sa-detail-modal {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 2rem;
+  width: 100%;
+  max-width: 600px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.sa-detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--button-bg);
+  border: 1px solid var(--border);
+  padding: 0.4rem 1rem;
+  border-radius: 50px;
+  font-size: 0.83rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text);
+  margin-bottom: 1rem;
+  transition: all 0.2s;
+}
+
+.sa-detail-back:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.sa-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.sa-detail-modal h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.sa-detail-subject {
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+  font-weight: 500;
+}
+
+.sa-detail-desc {
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.sa-detail-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  background: var(--surface);
+  padding: 1rem;
+  border-radius: 12px;
+  margin-top: 0.75rem;
+}
+
+.sa-detail-meta div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.sa-detail-meta span {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.sa-detail-meta strong {
+  font-size: 0.9rem;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .sa-annc-card {
+    padding: 1rem;
+  }
+
+  .sa-detail-modal {
+    padding: 1.25rem;
+  }
+}

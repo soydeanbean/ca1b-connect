@@ -96,6 +96,10 @@ function buildSessionSummary(records: Record<string, SessionAttendanceRecord>) {
 
 export async function createSession(subjectCode: string, creatorUid: string): Promise<AttendanceSession | null> {
   const date = getTodayDateId();
+  return createSessionForDate(subjectCode, date, creatorUid);
+}
+
+export async function createSessionForDate(subjectCode: string, date: string, creatorUid: string): Promise<AttendanceSession | null> {
   const sessionId = getSessionId(subjectCode, date);
 
   const existing = await getSession(subjectCode, date);
