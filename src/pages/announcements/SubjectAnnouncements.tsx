@@ -5,7 +5,6 @@ import { useAuth } from "../../hooks/useAuth";
 import { getAllSubjects } from "../../services/subjectService";
 import { getAllSubjectAnnouncements } from "../../services/subjectAnnouncementService";
 import type { SubjectAnnouncement } from "../../types/SubjectAnnouncement";
-import type { Subject } from "../../types/Subject";
 import "./SubjectAnnouncements.css";
 
 function formatTimestamp(ts: unknown) {
