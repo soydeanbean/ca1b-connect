@@ -3,6 +3,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Navbar from "./components/common/Navbar";
+import "./components/common/QoL.css";
 
 import Dashboard from "./pages/dashboard/Dashboard";
 import Subjects from "./pages/subjects/Subjects";

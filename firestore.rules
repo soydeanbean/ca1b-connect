@@ -679,5 +679,68 @@ service cloud.firestore {
 
       allow delete: if canManageActivities();
     }
+
+    // ─── NEW: Subject Announcements ───
+    match /subjectAnnouncements/{announcementId} {
+      allow read: if signedIn() && hasProfile();
+
+      allow create: if canCreateAnnouncements()
+        && request.resource.data.id == announcementId
+        && request.resource.data.subjectCode is string
+        && request.resource.data.title is string
+        && request.resource.data.content is string
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.keys().hasAny([
+          "id",
+          "subjectCode",
+          "title",
+          "content",
+          "pinned",
+          "attachments",
+          "createdBy",
+          "creatorName",
+          "creatorRole",
+          "creatorPhotoURL",
+          "createdAt",
+          "updatedAt",
+          "dueDate"
+        ]);
+
+      allow update: if canCreateAnnouncements();
+
+      allow delete: if canCreateAnnouncements();
+    }
+
+    // ─── NEW: User Preferences ───
+    match /userPreferences/{userId} {
+      allow read: if signedIn();
+      allow create, update: if isOwner(userId);
+      allow delete: if isAdmin();
+    }
+
+    // ─── NEW: AI Usage Tracking ───
+    match /aiUsage/{docId} {
+      allow read: if signedIn()
+        && request.auth.uid == resource.data.userId;
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.count == 1;
+      allow update: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.count is number;
+      allow delete: if isAdmin();
+    }
+
+    // ─── NEW: Push Subscriptions ───
+    match /pushSubscriptions/{userId} {
+      allow read, create, update: if isOwner(userId);
+      allow delete: if isAdmin();
+    }
+
+    // ─── NEW: Notification Preferences ───
+    match /notificationPreferences/{userId} {
+      allow read, create, update: if isOwner(userId);
+      allow delete: if isAdmin();
+    }
   }
 }

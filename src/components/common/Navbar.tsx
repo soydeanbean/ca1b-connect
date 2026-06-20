@@ -293,6 +293,7 @@ export default function Navbar() {
                 <Link to="/profile">👤 Profile</Link>
                 <Link to="/dashboard">📊 My Dashboard</Link>
                 <Link to="/subjects">📚 Subjects</Link>
+                <Link to="/settings">⚙️ Settings</Link>
 
                 <hr />
 
