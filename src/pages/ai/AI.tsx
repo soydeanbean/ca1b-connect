@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { getUserProfile } from "../../services/profileService";
-import { aiCreateInstances, aiAskQuestion } from "../../services/aiService";
+import { aiCreateInstances, aiAskWithContext } from "../../services/aiService";
 import { createSubjectActivity, getAllSubjects } from "../../services/subjectService";
 import { createSubjectAnnouncement } from "../../services/subjectAnnouncementService";
 import { createAnnouncement } from "../../services/announcementService";
@@ -131,7 +131,7 @@ export default function AI() {
     try {
       await incrementAIUsage(user.uid);
       await refreshUsage();
-      const answer = await aiAskQuestion(question);
+      const answer = await aiAskWithContext(question);
       setChatHistory(prev => [...prev, { role: "ai", content: answer }]);
     } catch (err) {
       const aiError = err as AIError;
