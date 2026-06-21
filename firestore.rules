@@ -690,7 +690,7 @@ service cloud.firestore {
         && request.resource.data.title is string
         && request.resource.data.content is string
         && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.keys().hasAny([
+        && request.resource.data.keys().hasOnly([
           "id",
           "subjectCode",
           "title",

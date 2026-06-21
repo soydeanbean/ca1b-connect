@@ -1,12 +1,14 @@
 import { getActivities } from "./activityService";
 import { getCalendarEvents } from "./eventService";
 import { getClassProfiles } from "./profileService";
+import { getAllSubjectAnnouncements } from "./subjectAnnouncementService";
+import { getAllSubjects, getSubjectActivities } from "./subjectService";
 
 export type GlobalSearchResult = {
   id: string;
   label: string;
   description: string;
-  category: "Activities" | "Attendance" | "Calendar" | "Students";
+  category: "Activities" | "Announcements" | "Attendance" | "Calendar" | "Students";
   path: string;
 };
 
@@ -19,11 +21,19 @@ export async function searchGlobal(rawQuery: string): Promise<GlobalSearchResult
 
   if (searchQuery.length < 2) return [];
 
-  const [profiles, activities, events] = await Promise.all([
+  const [profiles, activities, events, subjectAnnouncements, subjects] = await Promise.all([
     getClassProfiles(),
     getActivities(),
-    getCalendarEvents()
+    getCalendarEvents(),
+    getAllSubjectAnnouncements(),
+    Promise.resolve(getAllSubjects())
   ]);
+
+  // Load subject activities
+  const subjectCodes = subjects.map(s => s.code).filter(c => c !== "ASSEMBLY" && c !== "EXAMEN");
+  const subjectActivityPromises = subjectCodes.map(code => getSubjectActivities(code));
+  const subjectActivityArrays = await Promise.all(subjectActivityPromises);
+  const allSubjectActivities = subjectActivityArrays.flat();
 
   const studentResults = profiles
     .filter((profile) =>
@@ -73,5 +83,31 @@ export async function searchGlobal(rawQuery: string): Promise<GlobalSearchResult
       path: `/calendar?event=${encodeURIComponent(event.id)}`
     }));
 
-  return [...studentResults, ...activityResults, ...eventResults].slice(0, 8);
+  // Subject announcements
+  const subjectAnnouncementResults = subjectAnnouncements
+    .filter((a) =>
+      includesQuery(`${a.title} ${a.content} ${a.subjectCode} ${a.creatorName}`, searchQuery)
+    )
+    .map<GlobalSearchResult>((a) => ({
+      id: `subject-announcement-${a.id}`,
+      label: a.title,
+      description: `[${a.subjectCode}] ${a.content.slice(0, 100)}`,
+      category: "Announcements",
+      path: `/subject-announcements`
+    }));
+
+  // Subject activities
+  const subjectActivityResults = allSubjectActivities
+    .filter((a) =>
+      includesQuery(`${a.title} ${a.description} ${a.subjectCode}`, searchQuery)
+    )
+    .map<GlobalSearchResult>((a) => ({
+      id: `subject-activity-${a.id}`,
+      label: a.title,
+      description: `[${a.subjectCode}] ${a.type} • due ${a.dueDate}`,
+      category: "Activities",
+      path: `/subject-activities`
+    }));
+
+  return [...studentResults, ...activityResults, ...subjectActivityResults, ...subjectAnnouncementResults, ...eventResults].slice(0, 12);
 }

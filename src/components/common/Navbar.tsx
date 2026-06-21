@@ -179,10 +179,12 @@ export default function Navbar() {
           <nav className={`nav-links ${menuOpen ? "active" : ""}`}>
             <Link to="/dashboard">Dashboard</Link>
             <Link to="/subjects">Subjects</Link>
+            <Link to="/subject-activities">Activities</Link>
+            <Link to="/subject-announcements">Announcements</Link>
             <Link to="/ai">AI</Link>
-            <Link to="/announcements">Announcements</Link>
             <Link to="/students">Students</Link>
             <Link to="/calendar">Calendar</Link>
+            <Link to="/analytics">Analytics</Link>
           </nav>
 
           {/* RIGHT */}

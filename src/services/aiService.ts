@@ -51,6 +51,43 @@ export async function aiCreateInstances(prompt: string): Promise<AICreateResult>
 }
 
 /**
+ * Create multiple instances from a single prompt
+ * Returns an array of AICreateResult items
+ */
+export async function aiCreateMultipleInstances(prompt: string): Promise<AICreateResult[]> {
+  try {
+    const response = await fetch(`${getApiBaseUrl()}/api/ai/create-instances`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ prompt, multi: true }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw buildAIError(
+        parseErrorType(response.status, result.error),
+        result.error || "AI request failed."
+      );
+    }
+
+    if (!result.data) {
+      throw buildAIError("parse", "AI returned an empty response.");
+    }
+
+    // Support both single result and array
+    return Array.isArray(result.data) ? result.data : [result.data];
+  } catch (error: any) {
+    if (error.type && error.message) {
+      throw error;
+    }
+    throw parseAIError(error);
+  }
+}
+
+/**
  * Call the AI Ask Question API endpoint
  * Sends a question and receives a text answer
  */
