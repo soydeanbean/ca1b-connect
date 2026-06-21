@@ -1,6 +1,6 @@
 # CA1B Connect
 
-![Version](https://img.shields.io/badge/version-v0.8.0--beta-blue)
+![Version](https://img.shields.io/badge/version-v1.0.0--beta-blue)
 ![Status](https://img.shields.io/badge/status-active%20development-green)
 
 ## About
@@ -15,11 +15,9 @@ It’s not really a school project, more like something I’m building for our c
 
 ## Current Status
 
-🚧 **In Active Development (Beta)**
+**Deployed**
 
-The platform is still being worked on and improved regularly. Some features are still unfinished or being refined.
-
-**Current Version:** `v0.8.0 Beta`
+**Current Version:** `v1.0.0`
 
 ---
 

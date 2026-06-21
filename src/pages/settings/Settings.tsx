@@ -5,7 +5,8 @@ import { useAuth } from "../../hooks/useAuth";
 import {
   getUserSettings,
   saveUserSettings,
-  applyTheme
+  applyTheme,
+  applyThemeColor
 } from "../../services/settingsService";
 import { isAppInstalled, canInstallPWA, installPWA } from "../../services/pwaService";
 import {
@@ -15,7 +16,8 @@ import {
   getNotificationPreferences,
   saveNotificationPreferences
 } from "../../services/fcmService";
-import type { UserSettings, ThemeMode, PrivacyMode } from "../../types/Settings";
+import type { UserSettings, ThemeMode, ThemeColor, PrivacyMode } from "../../types/Settings";
+import { THEME_COLORS } from "../../types/Settings";
 import type { NotificationPreference } from "../../types/PushSubscription";
 import "./Settings.css";
 
@@ -37,6 +39,7 @@ export default function Settings() {
         const s = await getUserSettings(user.uid);
         setSettings(s);
         applyTheme(s.theme);
+        applyThemeColor(s.themeColor || "default");
 
         const prefs = await getNotificationPreferences(user.uid);
         setNotifPrefs(prefs);
@@ -63,6 +66,22 @@ export default function Settings() {
       setMessage("Theme updated");
     } catch (e) {
       setMessage("Failed to update theme");
+    } finally {
+      setSaving(false);
+    }
+  }, [user, settings]);
+
+  const handleThemeColorChange = useCallback(async (themeColor: ThemeColor) => {
+    if (!user || !settings) return;
+    setSaving(true);
+    setMessage("");
+    try {
+      await saveUserSettings(user.uid, { themeColor });
+      setSettings(prev => prev ? { ...prev, themeColor } : prev);
+      applyThemeColor(themeColor);
+      setMessage(`Theme color changed to ${THEME_COLORS.find(t => t.value === themeColor)?.label}`);
+    } catch (e) {
+      setMessage("Failed to update theme color");
     } finally {
       setSaving(false);
     }
@@ -153,6 +172,27 @@ export default function Settings() {
                 </span>
               </button>
             ))}
+          </div>
+
+          <div className="theme-color-section">
+            <p className="theme-color-label">Accent Color</p>
+            <div className="theme-color-options">
+              {THEME_COLORS.map(tc => (
+                <button
+                  key={tc.value}
+                  className={`theme-color-btn ${settings.themeColor === tc.value ? "active" : ""}`}
+                  onClick={() => handleThemeColorChange(tc.value)}
+                  disabled={saving}
+                  title={tc.label}
+                >
+                  <span
+                    className="theme-color-swatch"
+                    style={{ background: tc.gradient }}
+                  />
+                  <span className="theme-color-name">{tc.emoji} {tc.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         </section>
 
