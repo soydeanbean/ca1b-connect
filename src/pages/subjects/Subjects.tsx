@@ -1,5 +1,6 @@
 // src/pages/subjects/Subjects.tsx
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { useNotifications } from "../../hooks/useNotifications";
 import { getUserProfile } from "../../services/profileService";
@@ -91,6 +92,7 @@ function formatTime(time: string) {
 export default function Subjects() {
   const { user } = useAuth();
   const { getSubjectUnreadCount } = useNotifications();
+  const [searchParams] = useSearchParams();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [view, setView] = useState<SubjectView>("grid");
   const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
@@ -233,6 +235,17 @@ export default function Subjects() {
         const p = await getUserProfile(user.uid);
         setProfile(p);
         setQrBaseUrl(window.location.origin);
+
+        // Check URL for ?code= parameter to auto-select a subject
+        const codeParam = searchParams.get("code");
+        if (codeParam) {
+          const subject = subjects.find(s => s.code === codeParam);
+          if (subject && subject.code !== "ASSEMBLY" && subject.code !== "EXAMEN") {
+            setSelectedSubject(codeParam);
+            setDetailTab("activities");
+            setView("detail");
+          }
+        }
       } catch (e) {
         console.error("Init failed:", e);
       } finally {
@@ -240,7 +253,7 @@ export default function Subjects() {
       }
     };
     init();
-  }, [user]);
+  }, [user, searchParams]);
 
   const loadSubjectData = useCallback(async (subjectCode: string) => {
     if (!subjectCode) return;

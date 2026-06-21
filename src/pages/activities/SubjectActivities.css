@@ -309,6 +309,24 @@
   word-break: break-all;
 }
 
+.sa-detail-subject-link {
+  display: block;
+  text-align: center;
+  margin-top: 1rem;
+  padding: 0.6rem 1rem;
+  background: rgba(255, 140, 0, 0.1);
+  color: var(--primary);
+  border-radius: 50px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.sa-detail-subject-link:hover {
+  background: rgba(255, 140, 0, 0.2);
+}
+
 /* Mobile */
 @media (max-width: 768px) {
   .page-header h1 {

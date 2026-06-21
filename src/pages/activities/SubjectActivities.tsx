@@ -1,6 +1,7 @@
 // src/pages/activities/SubjectActivities.tsx
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { getUserProfile } from "../../services/profileService";
 import { getAllSubjects, getSubjectActivities, getTodayDateId } from "../../services/subjectService";
@@ -187,6 +188,13 @@ export default function SubjectActivities() {
               )}
               <div><span>Subject</span><strong>{selectedActivity.subjectCode}</strong></div>
             </div>
+            <Link
+              to={`/subjects?code=${selectedActivity.subjectCode}`}
+              className="sa-detail-subject-link"
+              onClick={(e) => e.stopPropagation()}
+            >
+              📚 View in Subject →
+            </Link>
           </div>
         </div>
       )}

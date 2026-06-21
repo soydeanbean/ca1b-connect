@@ -59,7 +59,7 @@ function activityToNotification(a: ClassActivity): AppNotification {
     category: "major",
     title: `New Activity: ${a.title}`,
     message: `Deadline: ${a.deadline}`,
-    link: `/subjects`,
+    link: `/activities?activity=${encodeURIComponent(a.id)}`,
     isRead: false,
     createdAt: a.createdAt
   };
