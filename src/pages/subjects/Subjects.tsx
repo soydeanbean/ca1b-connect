@@ -68,7 +68,7 @@ const EMPTY_ACTIVITY_FORM: SubjectActivityFormValues = {
   type: "assignment",
   dueDate: "",
   dueTime: "",
-  link: ""
+  links: []
 };
 
 function formatDate(date: string) {
@@ -399,7 +399,7 @@ export default function Subjects() {
       type: activity.type,
       dueDate: activity.dueDate,
       dueTime: activity.dueTime,
-      link: activity.link || ""
+      links: activity.links ? [...activity.links] : []
     });
   };
 
@@ -642,15 +642,57 @@ export default function Subjects() {
                     placeholder="Instructions, notes, requirements..."
                   />
                 </label>
-                <label className="full-width">
-                  Link (Optional)
-                  <input
-                    type="url"
-                    value={activityForm.link}
-                    onChange={e => setActivityForm(f => ({ ...f, link: e.target.value }))}
-                    placeholder="https://..."
-                  />
-                </label>
+                <div className="full-width links-section">
+                  <label>Links</label>
+                  {activityForm.links.map((link, idx) => (
+                    <div key={idx} className="link-entry">
+                      <input
+                        type="text"
+                        value={link.label}
+                        onChange={e => {
+                          const updated = [...activityForm.links];
+                          updated[idx] = { ...updated[idx], label: e.target.value };
+                          setActivityForm(f => ({ ...f, links: updated }));
+                        }}
+                        placeholder="Label (e.g. Document, Video)"
+                        className="link-label-input"
+                      />
+                      <input
+                        type="url"
+                        value={link.url}
+                        onChange={e => {
+                          const updated = [...activityForm.links];
+                          updated[idx] = { ...updated[idx], url: e.target.value };
+                          setActivityForm(f => ({ ...f, links: updated }));
+                        }}
+                        placeholder="https://..."
+                      />
+                      <button
+                        type="button"
+                        className="link-remove-btn"
+                        onClick={() => {
+                          const updated = activityForm.links.filter((_, i) => i !== idx);
+                          setActivityForm(f => ({ ...f, links: updated }));
+                        }}
+                        title="Remove link"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="link-add-btn"
+                    onClick={() => {
+                      setActivityForm(f => ({
+                        ...f,
+                        links: [...f.links, { url: "", label: "" }]
+                      }));
+                    }}
+                  >
+                    + Add Link
+                  </button>
+                </div>
               </div>
               <div className="activity-form-actions">
                 <button className="secondary" onClick={() => { setEditingActivity(false); setActivityForm(EMPTY_ACTIVITY_FORM); }}>Cancel</button>
@@ -672,8 +714,17 @@ export default function Subjects() {
               <div className="activity-detail-meta">
                 <div><span>Due Date</span><strong>{formatDate(selectedActivity.dueDate)}</strong></div>
                 {selectedActivity.dueTime && <div><span>Time</span><strong>{formatTime(selectedActivity.dueTime)}</strong></div>}
-                {selectedActivity.link && (
-                  <div><span>Link</span><a href={selectedActivity.link} target="_blank" rel="noreferrer">{selectedActivity.link}</a></div>
+                {selectedActivity.links && selectedActivity.links.length > 0 && (
+                  <div className="activity-detail-links">
+                    <span>Links</span>
+                    <div className="links-list">
+                      {selectedActivity.links.map((l, i) => (
+                        <a key={i} href={l.url} target="_blank" rel="noreferrer" className="activity-link-item">
+                          {l.label || l.url}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
                 )}
                 <div><span>Submitted</span><strong>{Object.keys(selectedActivity.completedBy || {}).length}</strong></div>
               </div>
@@ -1039,7 +1090,7 @@ export default function Subjects() {
         <p className="activity-list-desc">{activity.description?.slice(0, 120)}</p>
         <div className="activity-list-meta">
           <span>📅 {formatDate(activity.dueDate)}</span>
-          {activity.link && <span>🔗 Link</span>}
+          {activity.links && activity.links.length > 0 && <span>🔗 {activity.links.length} link{activity.links.length !== 1 ? "s" : ""}</span>}
         </div>
       </article>
     );

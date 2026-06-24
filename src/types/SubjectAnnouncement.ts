@@ -10,10 +10,16 @@ export interface SubjectAnnouncement {
   createdBy: string;
   creatorName: string;
   creatorRole: string;
-  creatorPhotoURL: string;
+  creatorPhotoURL?: string;
   createdAt: unknown;
   updatedAt: unknown;
   dueDate?: string;
+  /** If synced from Google Classroom */
+  classroomItemId?: string;
+  /** If synced from Google Classroom */
+  classroomCourseId?: string;
+  /** Link to the item in Google Classroom */
+  classroomLink?: string;
 }
 
 export interface SubjectAnnouncementAttachment {

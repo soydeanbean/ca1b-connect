@@ -276,6 +276,135 @@
   accent-color: var(--primary);
 }
 
+/* Google Classroom */
+.classroom-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.classroom-msg {
+  margin-bottom: 0;
+}
+
+.classroom-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.classroom-status.connected {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.classroom-status.disconnected {
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.classroom-status-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.classroom-status-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.classroom-status-info strong {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.classroom-status-info span {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.classroom-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.classroom-sync-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.4rem;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.classroom-sync-btn:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.classroom-sync-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.classroom-disconnect-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.4rem;
+  background: transparent;
+  color: #ef4444;
+  border: 2px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.classroom-disconnect-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: #ef4444;
+}
+
+.classroom-disconnect-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.classroom-connect-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #4285f4;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: fit-content;
+}
+
+.classroom-connect-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+}
+
 /* Mobile */
 @media (max-width: 768px) {
   .page-header h1 {

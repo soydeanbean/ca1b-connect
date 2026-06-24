@@ -12,6 +12,12 @@ export interface UserSettings {
   pushEnabled: boolean;
   emailNotifications: boolean;
   subjectNotificationPreferences: Record<string, boolean>;
+  /** Whether Google Classroom sync is enabled */
+  classroomSyncEnabled?: boolean;
+  /** Timestamp of last successful sync */
+  lastClassroomSync?: string;
+  /** Number of synced items (for display) */
+  classroomSyncCount?: number;
 }
 
 export const DEFAULT_USER_SETTINGS: UserSettings = {
@@ -21,7 +27,10 @@ export const DEFAULT_USER_SETTINGS: UserSettings = {
   notificationsEnabled: true,
   pushEnabled: true,
   emailNotifications: false,
-  subjectNotificationPreferences: {}
+  subjectNotificationPreferences: {},
+  classroomSyncEnabled: false,
+  lastClassroomSync: undefined,
+  classroomSyncCount: 0
 };
 
 export const THEME_COLORS: { value: ThemeColor; label: string; gradient: string; emoji: string }[] = [

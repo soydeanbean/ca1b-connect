@@ -16,6 +16,13 @@ import {
   getNotificationPreferences,
   saveNotificationPreferences
 } from "../../services/fcmService";
+import {
+  getClassroomAuthUrl,
+  syncClassroomData,
+  disconnectClassroom,
+  formatLastSync,
+  isClassroomConnected
+} from "../../services/classroomService";
 import type { UserSettings, ThemeMode, ThemeColor, PrivacyMode } from "../../types/Settings";
 import { THEME_COLORS } from "../../types/Settings";
 import type { NotificationPreference } from "../../types/PushSubscription";
@@ -30,6 +37,8 @@ export default function Settings() {
   const [pwaInstalled, setPwaInstalled] = useState(false);
   const [pwaAvailable, setPwaAvailable] = useState(false);
   const [notifPrefs, setNotifPrefs] = useState<NotificationPreference | null>(null);
+  const [classroomSyncing, setClassroomSyncing] = useState(false);
+  const [classroomMessage, setClassroomMessage] = useState("");
 
   useEffect(() => {
     const load = async () => {
@@ -46,6 +55,22 @@ export default function Settings() {
 
         setPwaInstalled(isAppInstalled());
         setPwaAvailable(canInstallPWA());
+
+        // Check URL params for classroom status
+        const urlParams = new URLSearchParams(window.location.search);
+        const classroomStatus = urlParams.get("classroom");
+        if (classroomStatus === "success") {
+          setClassroomMessage("✅ Google Classroom connected successfully!");
+          // Reload settings to get updated state
+          const updatedSettings = await getUserSettings(user.uid);
+          setSettings(updatedSettings);
+          // Clean URL
+          window.history.replaceState({}, "", window.location.pathname);
+        } else if (classroomStatus === "error") {
+          const errorMsg = urlParams.get("message") || "Failed to connect Google Classroom.";
+          setClassroomMessage(`❌ ${errorMsg}`);
+          window.history.replaceState({}, "", window.location.pathname);
+        }
       } catch (e) {
         console.error("Failed to load settings:", e);
       } finally {
@@ -248,6 +273,103 @@ export default function Settings() {
                 </div>
               </button>
             ))}
+          </div>
+        </section>
+
+        {/* Google Classroom Sync */}
+        <section className="settings-section">
+          <div className="settings-section-header">
+            <h2>📚 Google Classroom Sync</h2>
+            <p>Sync activities, announcements, and materials from Google Classroom.</p>
+          </div>
+          <div className="classroom-section">
+            {classroomMessage && (
+              <div className="settings-message classroom-msg">{classroomMessage}</div>
+            )}
+
+            {isClassroomConnected(settings) ? (
+              <>
+                <div className="classroom-status connected">
+                  <div className="classroom-status-icon">✅</div>
+                  <div className="classroom-status-info">
+                    <strong>Google Classroom Connected</strong>
+                    {settings.lastClassroomSync && (
+                      <span>Last synced: {formatLastSync(settings.lastClassroomSync)}</span>
+                    )}
+                    {settings.classroomSyncCount !== undefined && settings.classroomSyncCount > 0 && (
+                      <span>{settings.classroomSyncCount} item{settings.classroomSyncCount !== 1 ? "s" : ""} synced</span>
+                    )}
+                  </div>
+                </div>
+                <div className="classroom-actions">
+                  <button
+                    className="classroom-sync-btn"
+                    onClick={async () => {
+                      setClassroomSyncing(true);
+                      setClassroomMessage("");
+                      try {
+                        const result = await syncClassroomData(user!.uid);
+                        setClassroomMessage(`✅ ${result.summary}`);
+                        // Refresh settings
+                        const s = await getUserSettings(user!.uid);
+                        setSettings(s);
+                      } catch (e: any) {
+                        setClassroomMessage(`❌ ${e.message}`);
+                      } finally {
+                        setClassroomSyncing(false);
+                      }
+                    }}
+                    disabled={classroomSyncing}
+                  >
+                    {classroomSyncing ? "⏳ Syncing..." : "🔄 Sync Now"}
+                  </button>
+                  <button
+                    className="classroom-disconnect-btn"
+                    onClick={async () => {
+                      if (!confirm("Disconnect from Google Classroom? Synced data will remain but future updates won't be synced.")) return;
+                      setClassroomSyncing(true);
+                      try {
+                        await disconnectClassroom(user!.uid);
+                        setClassroomMessage("Google Classroom disconnected.");
+                        const s = await getUserSettings(user!.uid);
+                        setSettings(s);
+                      } catch (e: any) {
+                        setClassroomMessage(`❌ ${e.message}`);
+                      } finally {
+                        setClassroomSyncing(false);
+                      }
+                    }}
+                    disabled={classroomSyncing}
+                  >
+                    🔌 Disconnect
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="classroom-status disconnected">
+                  <div className="classroom-status-icon">📚</div>
+                  <div className="classroom-status-info">
+                    <strong>Not Connected</strong>
+                    <span>Connect to sync your Google Classroom activities and announcements.</span>
+                  </div>
+                </div>
+                <button
+                  className="classroom-connect-btn"
+                  onClick={async () => {
+                    if (!user) return;
+                    try {
+                      const authUrl = await getClassroomAuthUrl(user.uid);
+                      window.location.href = authUrl;
+                    } catch (e: any) {
+                      setClassroomMessage(`❌ ${e.message}`);
+                    }
+                  }}
+                >
+                  🔗 Connect Google Classroom
+                </button>
+              </>
+            )}
           </div>
         </section>
 

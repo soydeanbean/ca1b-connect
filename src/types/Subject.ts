@@ -52,6 +52,11 @@ export interface SessionAttendanceSummary {
   excused: number;
 }
 
+export interface ActivityLink {
+  url: string;
+  label: string;
+}
+
 export interface SubjectActivity {
   id: string;
   subjectCode: string;
@@ -60,12 +65,18 @@ export interface SubjectActivity {
   type: "assignment" | "project" | "activity" | "quiz";
   dueDate: string;
   dueTime: string;
-  link?: string;
+  links?: ActivityLink[];
   completedBy: Record<string, SubjectActivityCompletion>;
   createdAt: unknown;
   createdBy: string;
   updatedAt: unknown;
   updatedBy: string;
+  /** If synced from Google Classroom, stores the Classroom item ID for dedup */
+  classroomItemId?: string;
+  /** If synced from Google Classroom, stores the Classroom course ID */
+  classroomCourseId?: string;
+  /** Link to the item in Google Classroom */
+  classroomLink?: string;
 }
 
 export interface SubjectActivityCompletion {
@@ -88,5 +99,5 @@ export interface SubjectActivityFormValues {
   type: "assignment" | "project" | "activity" | "quiz";
   dueDate: string;
   dueTime: string;
-  link: string;
+  links: ActivityLink[];
 }

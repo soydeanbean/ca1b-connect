@@ -5,9 +5,25 @@
     },
     "api/ai/create-instances.ts": {
       "maxDuration": 10
+    },
+    "api/classroom/oauth-init.ts": {
+      "maxDuration": 10
+    },
+    "api/classroom/oauth-callback.ts": {
+      "maxDuration": 29
+    },
+    "api/classroom/sync.ts": {
+      "maxDuration": 60
+    },
+    "api/classroom/disconnect.ts": {
+      "maxDuration": 10
     }
   },
   "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"

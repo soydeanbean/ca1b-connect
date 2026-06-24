@@ -183,8 +183,17 @@ export default function SubjectActivities() {
             <div className="sa-detail-meta">
               <div><span>Due Date</span><strong>{formatDate(selectedActivity.dueDate)}</strong></div>
               {selectedActivity.dueTime && <div><span>Time</span><strong>{selectedActivity.dueTime}</strong></div>}
-              {selectedActivity.link && (
-                <div><span>Link</span><a href={selectedActivity.link} target="_blank" rel="noreferrer">{selectedActivity.link}</a></div>
+              {selectedActivity.links && selectedActivity.links.length > 0 && (
+                <div className="sa-detail-links">
+                  <span>Links</span>
+                  <div className="sa-links-list">
+                    {selectedActivity.links.map((l, i) => (
+                      <a key={i} href={l.url} target="_blank" rel="noreferrer" className="sa-link-item">
+                        {l.label || l.url}
+                      </a>
+                    ))}
+                  </div>
+                </div>
               )}
               <div><span>Subject</span><strong>{selectedActivity.subjectCode}</strong></div>
             </div>

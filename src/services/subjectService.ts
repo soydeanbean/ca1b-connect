@@ -10,6 +10,7 @@ import {
   query,
   where,
   orderBy,
+  limit,
   serverTimestamp,
   runTransaction
 } from "firebase/firestore";
@@ -274,8 +275,12 @@ export async function createSubjectActivity(
     updatedBy: creator.uid
   };
 
-  if (values.link.trim()) {
-    activity.link = values.link.trim();
+  // Store links array (filter out empty entries)
+  if (values.links && values.links.length > 0) {
+    const validLinks = values.links.filter(l => l.url.trim());
+    if (validLinks.length > 0) {
+      activity.links = validLinks;
+    }
   }
 
   await setDoc(activityRef, activity);
@@ -298,14 +303,32 @@ export async function updateSubjectActivity(
     updatedBy: editorUid
   };
 
-  if (values.link.trim()) {
-    nextActivity.link = values.link.trim();
+  // Update links array
+  if (values.links && values.links.length > 0) {
+    const validLinks = values.links.filter(l => l.url.trim());
+    if (validLinks.length > 0) {
+      nextActivity.links = validLinks;
+    } else {
+      delete nextActivity.links;
+    }
   } else {
-    delete nextActivity.link;
+    delete nextActivity.links;
   }
 
   await setDoc(getActivityRef(activity.id), nextActivity);
   return nextActivity;
+}
+
+/** Check if an activity with the given classroomItemId already exists (dedup) */
+export async function getActivityByClassroomItemId(classroomItemId: string): Promise<SubjectActivity | null> {
+  const q = query(
+    collection(db, ACTIVITIES_COLLECTION),
+    where("classroomItemId", "==", classroomItemId),
+    limit(1)
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  return snap.docs[0].data() as SubjectActivity;
 }
 
 export async function deleteSubjectActivity(id: string) {
