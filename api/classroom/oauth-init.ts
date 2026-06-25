@@ -21,7 +21,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const scopes = [
       "https://www.googleapis.com/auth/classroom.courses.readonly",
-      "https://www.googleapis.com/auth/classroom.coursework.readonly",
+      "https://www.googleapis.com/auth/classroom.course-work.readonly",
       "https://www.googleapis.com/auth/classroom.announcements.readonly",
       "https://www.googleapis.com/auth/classroom.topics.readonly",
       "https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly"
