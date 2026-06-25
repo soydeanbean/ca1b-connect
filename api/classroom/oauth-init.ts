@@ -9,11 +9,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const CLIENT_ID = process.env.GOOGLE_CLASSROOM_CLIENT_ID;
-    // The callback URL is now a Vercel API route, not Firebase Functions
-    const baseUrl = process.env.VERCEL_URL
-      ? `https://${process.env.VERCEL_URL}`
-      : process.env.VITE_API_BASE_URL || "http://localhost:5173";
-    const REDIRECT_URI = `${baseUrl}/api/classroom/oauth-callback`;
+    // Use explicit redirect URI from env var, or fall back to Vercel URL, or localhost
+    const REDIRECT_URI = process.env.GOOGLE_CLASSROOM_REDIRECT_URI
+      || (process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}/api/classroom/oauth-callback`
+        : "http://localhost:5173/api/classroom/oauth-callback");
 
     if (!CLIENT_ID) {
       return res.status(500).json({ error: "Google Classroom OAuth not configured." });
