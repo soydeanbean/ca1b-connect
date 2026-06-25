@@ -1,44 +1,11 @@
 // api/classroom/oauth-callback.ts
 // Vercel Serverless Function — Google OAuth callback handler
-// Receives auth code, exchanges for tokens, stores in Firestore
+// Exchanges code for tokens, then passes them back to the frontend via URL hash
+// Frontend writes the tokens to Firestore (no firebase-admin needed)
+
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import admin from "firebase-admin";
-
-// Initialize Firebase Admin with explicit service account from env vars
-if (!admin.apps.length) {
-  const serviceAccount = {
-    projectId: process.env.FIREBASE_PROJECT_ID || "ca1b-connect",
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY
-      ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n")
-      : undefined
-  };
-
-  if (serviceAccount.clientEmail && serviceAccount.privateKey) {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
-      projectId: serviceAccount.projectId
-    });
-  } else {
-    // Fallback: try application default (works locally, may fail on Vercel)
-    admin.initializeApp({
-      credential: admin.credential.applicationDefault(),
-      projectId: serviceAccount.projectId
-    });
-  }
-}
-
-const db = admin.firestore();
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Handle CORS preflight
-  if (req.method === "OPTIONS") {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-    return res.status(200).end();
-  }
-
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -58,7 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       );
     }
 
-    // Decode state to get userId
+    // Decode state to get the redirect destination
     let userId = "";
     try {
       const stateData = JSON.parse(Buffer.from(state as string, "base64").toString());
@@ -77,7 +44,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const CLIENT_ID = process.env.GOOGLE_CLASSROOM_CLIENT_ID;
     const CLIENT_SECRET = process.env.GOOGLE_CLASSROOM_CLIENT_SECRET;
-    // Compute redirect URI the same way as oauth-init.ts
+    // Must match the redirect_uri used in oauth-init.ts exactly
     const REDIRECT_URI = process.env.GOOGLE_CLASSROOM_REDIRECT_URI
       || (process.env.VERCEL_URL
         ? `https://${process.env.VERCEL_URL}/api/classroom/oauth-callback`
@@ -107,33 +74,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!tokenResponse.ok) {
       console.error("Token exchange error:", tokenData);
       return res.redirect(
-        "/settings?classroom=error&message=" + encodeURIComponent("Failed to get access token: " + (tokenData.error_description || tokenData.error || "unknown"))
+        "/settings?classroom=error&message=" + encodeURIComponent(
+          "Token exchange failed: " + (tokenData.error_description || tokenData.error || "unknown")
+        )
       );
     }
 
-    // Store tokens in Firestore
-    await db
-      .collection("userPreferences")
-      .doc(userId)
-      .collection("classroomTokens")
-      .doc("oauth")
-      .set({
-        accessToken: tokenData.access_token,
-        refreshToken: tokenData.refresh_token || "",
-        scope: tokenData.scope || "",
-        tokenType: tokenData.token_type || "Bearer",
-        expiryDate: Date.now() + (tokenData.expires_in || 3600) * 1000,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
+    // Instead of writing to Firestore here (which requires firebase-admin on Vercel),
+    // we pass the tokens back to the frontend via the redirect URL.
+    // The frontend will write them to Firestore using the client SDK.
+    const tokenPayload = {
+      accessToken: tokenData.access_token,
+      refreshToken: tokenData.refresh_token || "",
+      scope: tokenData.scope || "",
+      tokenType: tokenData.token_type || "Bearer",
+      expiryDate: Date.now() + (tokenData.expires_in || 3600) * 1000
+    };
 
-    // Enable classroom sync in user settings
-    await db.collection("userPreferences").doc(userId).set({
-      classroomSyncEnabled: true,
-      lastClassroomSync: null,
-      classroomSyncCount: 0
-    }, { merge: true });
+    // Base64 encode the token payload so it survives the URL
+    const tokenBase64 = Buffer.from(JSON.stringify(tokenPayload)).toString("base64");
 
-    return res.redirect("/settings?classroom=success");
+    return res.redirect(`/settings?classroom=success&tokens=${encodeURIComponent(tokenBase64)}&uid=${encodeURIComponent(userId)}`);
   } catch (error: any) {
     console.error("OAuth callback error:", error);
     return res.redirect(

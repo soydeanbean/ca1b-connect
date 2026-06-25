@@ -61,6 +61,36 @@ export default function Settings() {
         const classroomStatus = urlParams.get("classroom");
         if (classroomStatus === "success") {
           setClassroomMessage("✅ Google Classroom connected successfully!");
+          // If tokens are passed back from the OAuth callback, store them in Firestore
+          const tokensBase64 = urlParams.get("tokens");
+          const uidFromUrl = urlParams.get("uid");
+          if (tokensBase64 && uidFromUrl && uidFromUrl === user.uid) {
+            try {
+              const tokenPayload = JSON.parse(atob(tokensBase64));
+              // Store tokens in Firestore using client SDK
+              const { doc, setDoc, serverTimestamp } = await import("firebase/firestore");
+              const { db } = await import("../../lib/firebase");
+              await setDoc(
+                doc(db, "userPreferences", uidFromUrl, "classroomTokens", "oauth"),
+                {
+                  accessToken: tokenPayload.accessToken,
+                  refreshToken: tokenPayload.refreshToken,
+                  scope: tokenPayload.scope,
+                  tokenType: tokenPayload.tokenType,
+                  expiryDate: tokenPayload.expiryDate,
+                  updatedAt: serverTimestamp()
+                }
+              );
+              // Enable classroom sync
+              await setDoc(
+                doc(db, "userPreferences", uidFromUrl),
+                { classroomSyncEnabled: true, lastClassroomSync: null, classroomSyncCount: 0 },
+                { merge: true }
+              );
+            } catch (e) {
+              console.error("Failed to store OAuth tokens:", e);
+            }
+          }
           // Reload settings to get updated state
           const updatedSettings = await getUserSettings(user.uid);
           setSettings(updatedSettings);
