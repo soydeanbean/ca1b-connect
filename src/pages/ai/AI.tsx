@@ -171,7 +171,7 @@ export default function AI() {
           const subjectCode = subjectOverrides[i] || result.subjectCode;
           if (!subjectCode) { failed++; continue; }
           await createSubjectActivity(
-            { title: result.title, description: result.description, type: result.type, dueDate: result.dueDate, dueTime: result.dueTime, link: "" },
+            { title: result.title, description: result.description, type: result.type, dueDate: result.dueDate, dueTime: result.dueTime, links: [] },
             subjectCode,
             profile
           );
