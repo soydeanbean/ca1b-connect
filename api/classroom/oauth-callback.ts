@@ -4,17 +4,41 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import admin from "firebase-admin";
 
-// Initialize Firebase Admin (needed to store tokens in Firestore)
+// Initialize Firebase Admin with explicit service account from env vars
 if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-    projectId: process.env.FIREBASE_PROJECT_ID || "ca1b-connect"
-  });
+  const serviceAccount = {
+    projectId: process.env.FIREBASE_PROJECT_ID || "ca1b-connect",
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY
+      ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n")
+      : undefined
+  };
+
+  if (serviceAccount.clientEmail && serviceAccount.privateKey) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
+      projectId: serviceAccount.projectId
+    });
+  } else {
+    // Fallback: try application default (works locally, may fail on Vercel)
+    admin.initializeApp({
+      credential: admin.credential.applicationDefault(),
+      projectId: serviceAccount.projectId
+    });
+  }
 }
 
 const db = admin.firestore();
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Handle CORS preflight
+  if (req.method === "OPTIONS") {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    return res.status(200).end();
+  }
+
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -53,9 +77,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const CLIENT_ID = process.env.GOOGLE_CLASSROOM_CLIENT_ID;
     const CLIENT_SECRET = process.env.GOOGLE_CLASSROOM_CLIENT_SECRET;
-    const REDIRECT_URI = process.env.GOOGLE_CLASSROOM_REDIRECT_URI;
+    // Compute redirect URI the same way as oauth-init.ts
+    const REDIRECT_URI = process.env.GOOGLE_CLASSROOM_REDIRECT_URI
+      || (process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}/api/classroom/oauth-callback`
+        : "http://localhost:5173/api/classroom/oauth-callback");
 
-    if (!CLIENT_ID || !CLIENT_SECRET || !REDIRECT_URI) {
+    if (!CLIENT_ID || !CLIENT_SECRET) {
       return res.redirect(
         "/settings?classroom=error&message=" + encodeURIComponent("OAuth not configured on server.")
       );
@@ -79,7 +107,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (!tokenResponse.ok) {
       console.error("Token exchange error:", tokenData);
       return res.redirect(
-        "/settings?classroom=error&message=" + encodeURIComponent("Failed to get access token.")
+        "/settings?classroom=error&message=" + encodeURIComponent("Failed to get access token: " + (tokenData.error_description || tokenData.error || "unknown"))
       );
     }
 
