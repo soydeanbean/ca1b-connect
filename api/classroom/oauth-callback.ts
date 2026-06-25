@@ -1,7 +1,6 @@
 // api/classroom/oauth-callback.ts
 // Vercel Serverless Function — Google OAuth callback handler
-// Exchanges code for tokens, then passes them back to the frontend via URL hash
-// Frontend writes the tokens to Firestore (no firebase-admin needed)
+// Exchanges code for tokens, returns HTML page that stores tokens client-side
 
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
@@ -25,7 +24,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       );
     }
 
-    // Decode state to get the redirect destination
+    // Decode state to get userId
     let userId = "";
     try {
       const stateData = JSON.parse(Buffer.from(state as string, "base64").toString());
@@ -44,7 +43,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const CLIENT_ID = process.env.GOOGLE_CLASSROOM_CLIENT_ID;
     const CLIENT_SECRET = process.env.GOOGLE_CLASSROOM_CLIENT_SECRET;
-    // Must match the redirect_uri used in oauth-init.ts exactly
     const REDIRECT_URI = process.env.GOOGLE_CLASSROOM_REDIRECT_URI
       || (process.env.VERCEL_URL
         ? `https://${process.env.VERCEL_URL}/api/classroom/oauth-callback`
@@ -80,9 +78,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       );
     }
 
-    // Instead of writing to Firestore here (which requires firebase-admin on Vercel),
-    // we pass the tokens back to the frontend via the redirect URL.
-    // The frontend will write them to Firestore using the client SDK.
     const tokenPayload = {
       accessToken: tokenData.access_token,
       refreshToken: tokenData.refresh_token || "",
@@ -91,10 +86,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       expiryDate: Date.now() + (tokenData.expires_in || 3600) * 1000
     };
 
-    // Base64 encode the token payload so it survives the URL
     const tokenBase64 = Buffer.from(JSON.stringify(tokenPayload)).toString("base64");
 
-    return res.redirect(`/settings?classroom=success&tokens=${encodeURIComponent(tokenBase64)}&uid=${encodeURIComponent(userId)}`);
+    // Return an HTML page that uses JavaScript to redirect to the SPA
+    // This ensures the SPA loads properly and can read the URL params
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <title>Redirecting...</title>
+  <script>
+    // Use window.location to redirect to the SPA with the tokens
+    window.location.href = "/settings?classroom=success&tokens=${encodeURIComponent(tokenBase64)}&uid=${encodeURIComponent(userId)}";
+  </script>
+</head>
+<body>
+  <p>Redirecting to CA1B Connect...</p>
+  <noscript>
+    <meta http-equiv="refresh" content="0;url=/settings?classroom=success&tokens=${encodeURIComponent(tokenBase64)}&uid=${encodeURIComponent(userId)}">
+  </noscript>
+</body>
+</html>`;
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    return res.status(200).send(html);
   } catch (error: any) {
     console.error("OAuth callback error:", error);
     return res.redirect(
