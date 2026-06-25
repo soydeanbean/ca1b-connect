@@ -452,11 +452,15 @@ service cloud.firestore {
           "dueDate",
           "dueTime",
           "link",
+          "links",
           "completedBy",
           "createdAt",
           "createdBy",
           "updatedAt",
-          "updatedBy"
+          "updatedBy",
+          "classroomItemId",
+          "classroomCourseId",
+          "classroomLink"
         ]);
     }
 
@@ -703,7 +707,10 @@ service cloud.firestore {
           "creatorPhotoURL",
           "createdAt",
           "updatedAt",
-          "dueDate"
+          "dueDate",
+          "classroomItemId",
+          "classroomCourseId",
+          "classroomLink"
         ]);
 
       allow update: if canCreateAnnouncements();
@@ -718,10 +725,9 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // ─── NEW: AI Usage Tracking ───
+    // ─── AI Usage Tracking ───
     match /aiUsage/{docId} {
-      allow read: if signedIn()
-        && request.auth.uid == resource.data.userId;
+      allow read: if signedIn();
       allow create: if signedIn()
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.count == 1;
@@ -731,14 +737,33 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // ─── NEW: Push Subscriptions ───
+    // ─── Push Subscriptions ───
     match /pushSubscriptions/{userId} {
       allow read, create, update: if isOwner(userId);
       allow delete: if isAdmin();
     }
 
-    // ─── NEW: Notification Preferences ───
+    // ─── Notification Preferences ───
     match /notificationPreferences/{userId} {
+      allow read, create, update: if isOwner(userId);
+      allow delete: if isAdmin();
+    }
+
+    // ─── Classroom Sync Logs ───
+    match /classroomSyncLog/{docId} {
+      allow read: if signedIn();
+      allow create, update: if signedIn();
+      allow delete: if isAdmin();
+    }
+
+    // ─── Classroom Tokens (subcollection) ───
+    match /userPreferences/{userId}/classroomTokens/{tokenId} {
+      allow read, create, update: if isOwner(userId);
+      allow delete: if isAdmin();
+    }
+
+    // ─── Subject-Classroom Mappings (subcollection) ───
+    match /userPreferences/{userId}/subjectClassroomMappings/{mappingId} {
       allow read, create, update: if isOwner(userId);
       allow delete: if isAdmin();
     }

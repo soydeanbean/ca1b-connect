@@ -185,6 +185,7 @@ export default function Navbar() {
             <Link to="/students">Students</Link>
             <Link to="/calendar">Calendar</Link>
             <Link to="/analytics">Analytics</Link>
+            <Link to="/classroom-sync">Classroom Sync</Link>
           </nav>
 
           {/* RIGHT */}

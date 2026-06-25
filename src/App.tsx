@@ -22,6 +22,7 @@ import SubjectActivities from "./pages/activities/SubjectActivities";
 import Analytics from "./pages/analytics/Analytics";
 import Settings from "./pages/settings/Settings";
 import AI from "./pages/ai/AI";
+import ClassroomAdmin from "./pages/classroom/ClassroomAdmin";
 
 import ProtectedRoute from "./routes/ProtectedRoute";
 import PublicRoute from "./routes/PublicRoute";
@@ -103,6 +104,7 @@ function AppRoutes() {
                     <Route path="/analytics" element={<Analytics />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/ai" element={<AI />} />
+                    <Route path="/classroom-sync" element={<ClassroomAdmin />} />
                   </Routes>
                 </main>
               </div>
