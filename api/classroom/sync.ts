@@ -1,33 +1,67 @@
 // api/classroom/sync.ts
 // Vercel Serverless Function — Sync Google Classroom data
-// Runs entirely on Vercel, no Firebase Functions needed
-import type { VercelRequest, VercelResponse } from "@vercel/node";
-import admin from "firebase-admin";
-import type { DocumentData, QueryDocumentSnapshot } from "firebase-admin/firestore";
+// Uses the Google Classroom API directly with stored OAuth tokens
+// No firebase-admin needed — reads tokens from Firestore via REST API
 
-// Initialize Firebase Admin
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.applicationDefault(),
-    projectId: process.env.FIREBASE_PROJECT_ID || "ca1b-connect"
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+
+const FIREBASE_PROJECT = "ca1b-connect";
+const FIRESTORE_BASE = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT}/databases/(default)/documents`;
+
+/**
+ * Read a document from Firestore using REST API (no firebase-admin needed)
+ */
+async function firestoreGet(path: string): Promise<any> {
+  const url = `${FIRESTORE_BASE}/${path}`;
+  const resp = await fetch(url);
+  if (!resp.ok) return null;
+  const data = await resp.json();
+  return data;
+}
+
+/**
+ * Write a document to Firestore using REST API
+ */
+async function firestoreSet(path: string, data: any, merge = false): Promise<void> {
+  const url = `${FIRESTORE_BASE}/${path}${merge ? "?merge=true" : ""}`;
+  // Convert JS object to Firestore format
+  const fields: any = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value === null || value === undefined) continue;
+    if (typeof value === "string") fields[key] = { stringValue: value };
+    else if (typeof value === "number") fields[key] = { integerValue: String(value) };
+    else if (typeof value === "boolean") fields[key] = { booleanValue: value };
+    else if (value instanceof Date) fields[key] = { timestampValue: value.toISOString() };
+    else if (Array.isArray(value)) {
+      fields[key] = { arrayValue: { values: value.map(v => ({ stringValue: String(v) })) } };
+    } else if (typeof value === "object") {
+      fields[key] = { mapValue: { fields: flattenObject(value) } };
+    }
+  }
+  await fetch(url, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fields })
   });
 }
 
-const db = admin.firestore();
-
-interface GoogleTokens {
-  accessToken: string;
-  refreshToken: string;
-  expiryDate: number;
+function flattenObject(obj: any): any {
+  const result: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === null || value === undefined) continue;
+    if (typeof value === "string") result[key] = { stringValue: value };
+    else if (typeof value === "number") result[key] = { integerValue: String(value) };
+    else if (typeof value === "boolean") result[key] = { booleanValue: value };
+  }
+  return result;
 }
 
 /**
  * Refresh an expired Google OAuth token
  */
-async function refreshAccessToken(refreshToken: string): Promise<GoogleTokens | null> {
+async function refreshAccessToken(refreshToken: string): Promise<{ accessToken: string; refreshToken: string; expiryDate: number } | null> {
   const CLIENT_ID = process.env.GOOGLE_CLASSROOM_CLIENT_ID;
   const CLIENT_SECRET = process.env.GOOGLE_CLASSROOM_CLIENT_SECRET;
-
   if (!CLIENT_ID || !CLIENT_SECRET || !refreshToken) return null;
 
   const resp = await fetch("https://oauth2.googleapis.com/token", {
@@ -40,13 +74,8 @@ async function refreshAccessToken(refreshToken: string): Promise<GoogleTokens | 
       grant_type: "refresh_token"
     })
   });
-
   const data: any = await resp.json();
-  if (!resp.ok) {
-    console.error("Token refresh error:", data);
-    return null;
-  }
-
+  if (!resp.ok) return null;
   return {
     accessToken: data.access_token,
     refreshToken: data.refresh_token || refreshToken,
@@ -59,34 +88,30 @@ async function refreshAccessToken(refreshToken: string): Promise<GoogleTokens | 
  */
 async function getValidAccessToken(userId: string): Promise<string | null> {
   try {
-    const tokenSnap = await db
-      .collection("userPreferences")
-      .doc(userId)
-      .collection("classroomTokens")
-      .doc("oauth")
-      .get();
+    const docPath = `userPreferences/${userId}/classroomTokens/oauth`;
+    const snap = await firestoreGet(docPath);
+    if (!snap || !snap.fields) return null;
 
-    if (!tokenSnap.exists) return null;
+    const fields = snap.fields;
+    const accessToken = fields.accessToken?.stringValue || "";
+    const refreshToken = fields.refreshToken?.stringValue || "";
+    const expiryDate = parseInt(fields.expiryDate?.integerValue || "0", 10);
 
-    const tokenData = tokenSnap.data() as GoogleTokens | undefined;
-    if (!tokenData) return null;
+    if (!accessToken) return null;
 
-    if (tokenData.expiryDate > Date.now() + 300000) {
-      return tokenData.accessToken;
-    }
+    // Check if still valid (5 min buffer)
+    if (expiryDate > Date.now() + 300000) return accessToken;
 
-    if (!tokenData.refreshToken) {
-      console.error("No refresh token available for user:", userId);
-      return null;
-    }
-
-    const newTokens = await refreshAccessToken(tokenData.refreshToken);
+    // Need to refresh
+    if (!refreshToken) return null;
+    const newTokens = await refreshAccessToken(refreshToken);
     if (!newTokens) return null;
 
-    await tokenSnap.ref.set({
+    // Store updated tokens
+    await firestoreSet(docPath, {
       ...newTokens,
       tokenType: "Bearer",
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      updatedAt: new Date()
     });
 
     return newTokens.accessToken;
@@ -97,40 +122,36 @@ async function getValidAccessToken(userId: string): Promise<string | null> {
 }
 
 async function fetchCourses(accessToken: string): Promise<any[]> {
-  const resp = await fetch(
-    "https://classroom.googleapis.com/v1/courses?courseStates=ACTIVE",
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  );
+  const resp = await fetch("https://classroom.googleapis.com/v1/courses?courseStates=ACTIVE", {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
   if (!resp.ok) throw new Error(`Failed to fetch courses: ${resp.status}`);
   const data: any = await resp.json();
   return data.courses || [];
 }
 
 async function fetchCourseWork(accessToken: string, courseId: string): Promise<any[]> {
-  const resp = await fetch(
-    `https://classroom.googleapis.com/v1/courses/${courseId}/courseWork?courseWorkStates=PUBLISHED`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  );
+  const resp = await fetch(`https://classroom.googleapis.com/v1/courses/${courseId}/courseWork?courseWorkStates=PUBLISHED`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
   if (!resp.ok) throw new Error(`Failed to fetch coursework: ${resp.status}`);
   const data: any = await resp.json();
   return data.courseWork || [];
 }
 
 async function fetchAnnouncements(accessToken: string, courseId: string): Promise<any[]> {
-  const resp = await fetch(
-    `https://classroom.googleapis.com/v1/courses/${courseId}/announcements?announcementStates=PUBLISHED`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  );
+  const resp = await fetch(`https://classroom.googleapis.com/v1/courses/${courseId}/announcements?announcementStates=PUBLISHED`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
   if (!resp.ok) throw new Error(`Failed to fetch announcements: ${resp.status}`);
   const data: any = await resp.json();
   return data.announcements || [];
 }
 
 async function fetchCourseWorkMaterials(accessToken: string, courseId: string): Promise<any[]> {
-  const resp = await fetch(
-    `https://classroom.googleapis.com/v1/courses/${courseId}/courseWorkMaterials?courseWorkMaterialStates=PUBLISHED`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  );
+  const resp = await fetch(`https://classroom.googleapis.com/v1/courses/${courseId}/courseWorkMaterials?courseWorkMaterialStates=PUBLISHED`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
   if (!resp.ok) throw new Error(`Failed to fetch materials: ${resp.status}`);
   const data: any = await resp.json();
   return data.courseWorkMaterials || [];
@@ -143,81 +164,48 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const { uid } = req.body;
-    if (!uid) {
-      return res.status(400).json({ error: "User ID (uid) is required." });
-    }
+    if (!uid) return res.status(400).json({ error: "User ID (uid) is required." });
 
     const accessToken = await getValidAccessToken(uid);
     if (!accessToken) {
-      return res.status(401).json({
-        error: "Google Classroom not connected. Please go to Settings and connect first."
-      });
+      return res.status(401).json({ error: "Google Classroom not connected. Please go to Settings and connect first." });
     }
 
-    // Fetch courses
     const courses = await fetchCourses(accessToken);
     if (courses.length === 0) {
-      return res.json({
-        success: true,
-        activitiesCreated: 0,
-        announcementsCreated: 0,
-        materialsCreated: 0,
-        activitiesSkipped: 0,
-        announcementsSkipped: 0,
-        errors: [],
-        summary: "No active courses found in Google Classroom."
-      });
+      return res.json({ success: true, activitiesCreated: 0, announcementsCreated: 0, materialsCreated: 0, activitiesSkipped: 0, announcementsSkipped: 0, errors: [], summary: "No active courses found in Google Classroom." });
     }
 
-    // Get subject names from class data for auto-mapping
-    const classDataSnap = await db.collection("classCA1B").doc("data").get();
-    const schedule: { subject: string }[] = classDataSnap.exists
-      ? (classDataSnap.data()?.schedule || [])
-      : [];
-    const subjectNames = [...new Set(schedule.map((s: any) => s.subject))];
+    // Subject name to code mapping
+    const subjectCodeMap: Record<string, string> = {
+      "Homeroom Guidance Program I": "HRGP001",
+      "Effective Communication": "CORS001",
+      "Mabisang Komunikasyon": "CORS002",
+      "Life and Career Skills": "CORS003",
+      "Pag-aaral ng Kasaysayan at Lipunang Pilipino": "CORS004",
+      "General Mathematics": "CORS005",
+      "General Science": "CORS006",
+      "Computer Systems Servicing": "CTES004",
+      "Introduction to Christian Faith": "FLPS001",
+      "Introduction to Christian Faith: Foundations in a Plural and AI-Driven World": "FLPS001",
+      "SHS Reading Program I": "SRPS001"
+    };
+    const subjectNames = Object.keys(subjectCodeMap);
 
-    // Get existing mappings
-    const mappingsSnap = await db
-      .collection("userPreferences")
-      .doc(uid)
-      .collection("subjectClassroomMappings")
-      .get();
+    // Auto-map courses to subjects
     const mappings: { subjectCode: string; classroomCourseId: string }[] = [];
-    mappingsSnap.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
-      const d = doc.data();
-      mappings.push({ subjectCode: d.subjectCode || "", classroomCourseId: d.classroomCourseId || "" });
-    });
-
-    // Auto-create mappings if none exist
-    if (mappings.length === 0) {
-      for (const course of courses) {
-        const match = subjectNames.find((name: string) =>
-          name.toLowerCase().includes(course.name.toLowerCase()) ||
-          course.name.toLowerCase().includes(name.toLowerCase())
-        );
-        if (match) {
-          const subjectCode = match.substring(0, 4).toUpperCase();
-          await db
-            .collection("userPreferences")
-            .doc(uid)
-            .collection("subjectClassroomMappings")
-            .doc(course.id)
-            .set({
-              subjectCode,
-              classroomCourseId: course.id,
-              courseName: course.name,
-              lastSyncedAt: new Date().toISOString()
-            });
-          mappings.push({ subjectCode, classroomCourseId: course.id });
-        }
+    for (const course of courses) {
+      const match = subjectNames.find((name: string) =>
+        name.toLowerCase().includes(course.name.toLowerCase()) ||
+        course.name.toLowerCase().includes(name.toLowerCase())
+      );
+      if (match) {
+        mappings.push({ subjectCode: subjectCodeMap[match], classroomCourseId: course.id });
       }
     }
 
-    let activitiesCreated = 0;
-    let announcementsCreated = 0;
-    let materialsCreated = 0;
-    let activitiesSkipped = 0;
-    let announcementsSkipped = 0;
+    let activitiesCreated = 0, announcementsCreated = 0, materialsCreated = 0;
+    let activitiesSkipped = 0, announcementsSkipped = 0;
     const errors: string[] = [];
 
     for (const mapping of mappings) {
@@ -227,14 +215,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       try {
         const courseWork = await fetchCourseWork(accessToken, classroomCourseId);
         for (const item of courseWork) {
-          const existingQuery = await db
-            .collection("subject_activities")
-            .where("classroomItemId", "==", item.id)
-            .where("classroomCourseId", "==", classroomCourseId)
-            .limit(1)
-            .get();
-
-          if (!existingQuery.empty) { activitiesSkipped++; continue; }
+          // Check duplicates via REST
+          const existingQuery = await firestoreGet(`subject_activities?filter=classroomItemId%3D%22${item.id}%22%20AND%20classroomCourseId%3D%22${classroomCourseId}%22`);
+          if (existingQuery && existingQuery.documents && existingQuery.documents.length > 0) {
+            activitiesSkipped++;
+            continue;
+          }
 
           let dueDate = "", dueTime = "";
           if (item.dueDate) {
@@ -256,19 +242,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
           }
 
-          const activityRef = db.collection("subject_activities").doc();
-          await activityRef.set({
-            id: activityRef.id,
-            subjectCode,
+          const activityId = `gc_${classroomCourseId}_${item.id}`;
+          await firestoreSet(`subject_activities/${activityId}`, {
+            id: activityId, subjectCode,
             title: item.title || "Untitled",
             description: item.description || "",
             type: item.workType === "ASSIGNMENT" ? "assignment" : "activity",
             dueDate, dueTime,
             links: links.length > 0 ? links : [],
             completedBy: {},
-            createdAt: new Date(item.creationTime || new Date().toISOString()),
+            createdAt: item.creationTime || new Date().toISOString(),
             createdBy: "classroom_sync",
-            updatedAt: new Date(item.updateTime || new Date().toISOString()),
+            updatedAt: item.updateTime || new Date().toISOString(),
             updatedBy: "classroom_sync",
             classroomItemId: item.id,
             classroomCourseId,
@@ -286,8 +271,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const announcements = await fetchAnnouncements(accessToken, classroomCourseId);
         for (const item of announcements) {
           const announcementId = `gc_${classroomCourseId}_${item.id}`;
-          const existingSnap = await db.collection("subjectAnnouncements").doc(announcementId).get();
-          if (existingSnap.exists) { announcementsSkipped++; continue; }
+          const existingSnap = await firestoreGet(`subjectAnnouncements/${announcementId}`);
+          if (existingSnap && existingSnap.fields) { announcementsSkipped++; continue; }
 
           const content = item.text || "";
           const links: { name: string; url: string; type: string; size: number }[] = [];
@@ -299,15 +284,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
           }
 
-          await db.collection("subjectAnnouncements").doc(announcementId).set({
+          await firestoreSet(`subjectAnnouncements/${announcementId}`, {
             id: announcementId, subjectCode,
             title: content.substring(0, 100) || "Announcement",
             content, pinned: false, attachments: links,
             createdBy: "classroom_sync", creatorName: "Google Classroom", creatorRole: "teacher",
             classroomItemId: item.id, classroomCourseId,
             classroomLink: item.alternateLink || "",
-            createdAt: new Date(item.creationTime || new Date().toISOString()),
-            updatedAt: new Date(item.updateTime || new Date().toISOString())
+            createdAt: item.creationTime || new Date().toISOString(),
+            updatedAt: item.updateTime || new Date().toISOString()
           });
 
           announcementsCreated++;
@@ -320,14 +305,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       try {
         const materials = await fetchCourseWorkMaterials(accessToken, classroomCourseId);
         for (const item of materials) {
-          const existingQuery = await db
-            .collection("subject_activities")
-            .where("classroomItemId", "==", item.id)
-            .where("classroomCourseId", "==", classroomCourseId)
-            .limit(1)
-            .get();
-
-          if (!existingQuery.empty) { activitiesSkipped++; continue; }
+          const materialId = `gc_mat_${classroomCourseId}_${item.id}`;
+          const existingQuery = await firestoreGet(`subject_activities/${materialId}`);
+          if (existingQuery && existingQuery.fields) { activitiesSkipped++; continue; }
 
           const links: { url: string; label: string }[] = [];
           if (item.materials) {
@@ -339,17 +319,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             }
           }
 
-          const activityRef = db.collection("subject_activities").doc();
-          await activityRef.set({
-            id: activityRef.id, subjectCode,
+          await firestoreSet(`subject_activities/${materialId}`, {
+            id: materialId, subjectCode,
             title: item.title || "Untitled Resource",
             description: item.description || "",
             type: "activity", dueDate: "", dueTime: "",
             links: links.length > 0 ? links : [],
             completedBy: {},
-            createdAt: new Date(item.creationTime || new Date().toISOString()),
+            createdAt: item.creationTime || new Date().toISOString(),
             createdBy: "classroom_sync",
-            updatedAt: new Date(item.updateTime || new Date().toISOString()),
+            updatedAt: item.updateTime || new Date().toISOString(),
             updatedBy: "classroom_sync",
             classroomItemId: item.id, classroomCourseId,
             classroomLink: item.alternateLink || ""
@@ -363,10 +342,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Update last sync timestamp
-    await db.collection("userPreferences").doc(uid).set({
+    await firestoreSet(`userPreferences/${uid}`, {
       lastClassroomSync: new Date().toISOString(),
       classroomSyncCount: activitiesCreated + announcementsCreated + materialsCreated
-    }, { merge: true });
+    }, true);
 
     const totalCreated = activitiesCreated + announcementsCreated + materialsCreated;
     const totalSkipped = activitiesSkipped + announcementsSkipped;
@@ -374,12 +353,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? `Synced ${totalCreated} item${totalCreated === 1 ? "" : "s"} from Google Classroom${totalSkipped > 0 ? ` (${totalSkipped} duplicates skipped)` : ""}`
       : `No new items to sync. ${totalSkipped} existing item${totalSkipped !== 1 ? "s" : ""} found (up to date).`;
 
-    return res.json({
-      success: true,
-      activitiesCreated, announcementsCreated, materialsCreated,
-      activitiesSkipped, announcementsSkipped,
-      errors, summary
-    });
+    return res.json({ success: true, activitiesCreated, announcementsCreated, materialsCreated, activitiesSkipped, announcementsSkipped, errors, summary });
   } catch (error: any) {
     console.error("Classroom sync error:", error);
     return res.status(500).json({ error: error.message || "Failed to sync Google Classroom data." });
